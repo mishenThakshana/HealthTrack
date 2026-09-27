@@ -1,5 +1,10 @@
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Home";
+    var signedIn = SignInManager.IsSignedIn(User);
+    var currentUser = signedIn ? await UserManager.GetUserAsync(User) : null;
 }
 
 <section class="ht-hero">
@@ -9,10 +14,17 @@
                 <span class="badge rounded-pill bg-primary-subtle text-primary mb-3 px-3 py-2">Health &amp; Fitness Management</span>
                 <h1 class="display-5 mb-3">Track your health. <span class="text-primary">Reach your goals.</span></h1>
                 <p class="lead mb-4">Log workouts, meals and health metrics, follow plans from your trainer, and book consultations, all in one place.</p>
-                <div class="d-flex flex-wrap gap-2">
-                    <a class="btn btn-primary btn-lg px-4" asp-controller="Account" asp-action="Register">Get started</a>
-                    <a class="btn btn-outline-primary btn-lg px-4" asp-controller="Account" asp-action="Login">Sign in</a>
-                </div>
+                @if (currentUser is not null)
+                {
+                    <p class="fs-5 mb-0">Welcome back, <span class="fw-semibold text-primary">@currentUser.FullName</span>.</p>
+                }
+                else
+                {
+                    <div class="d-flex flex-wrap gap-2">
+                        <a class="btn btn-primary btn-lg px-4" asp-controller="Account" asp-action="Register">Get started</a>
+                        <a class="btn btn-outline-primary btn-lg px-4" asp-controller="Account" asp-action="Login">Sign in</a>
+                    </div>
+                }
             </div>
             <div class="col-lg-5 text-center d-none d-lg-block">
                 <i class="bi bi-heart-pulse text-primary" style="font-size: 10rem;"></i>

@@ -1,0 +1,97 @@
+@using HealthTrack.Controllers
+@model HealthTrack.Models.ViewModels.RegisterViewModel
+@{
+    ViewData["Title"] = "Create account";
+}
+
+<div class="container py-5">
+    <div class="ht-auth-card ht-auth-card-wide mx-auto">
+        <div class="text-center mb-4">
+            <div class="ht-icon mb-3"><i class="bi bi-person-plus"></i></div>
+            <h1 class="h3 fw-bold">Create your account</h1>
+            <p class="text-muted mb-0">Start tracking your health and fitness today</p>
+        </div>
+
+        <form asp-action="Register" method="post" novalidate>
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2" role="alert"></div>
+
+            <fieldset class="mb-4">
+                <legend class="form-label fw-semibold fs-6">@Html.DisplayNameFor(m => m.Role)</legend>
+                <div class="row g-2">
+                    @foreach (var role in AccountController.RegisterableRoles)
+                    {
+                        var id = $"role-{role.ToLowerInvariant()}";
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" asp-for="Role" value="@role" id="@id" />
+                            <label class="ht-role-option w-100" for="@id">
+                                <i class="bi @(role == HealthTrack.Data.Roles.Trainer ? "bi-person-badge" : "bi-person-heart")"></i>
+                                <span class="fw-semibold">@role</span>
+                                <small class="text-muted">@(role == HealthTrack.Data.Roles.Trainer ? "Coach and manage clients" : "Track my own health")</small>
+                            </label>
+                        </div>
+                    }
+                </div>
+                <span asp-validation-for="Role" class="text-danger small"></span>
+            </fieldset>
+
+            <div class="form-floating mb-3">
+                <input asp-for="FullName" class="form-control" autocomplete="name" placeholder="Full name" />
+                <label asp-for="FullName"></label>
+                <span asp-validation-for="FullName" class="text-danger small"></span>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Email" class="form-control" autocomplete="email" placeholder="name@example.com" />
+                <label asp-for="Email"></label>
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-sm-6">
+                    <div class="form-floating">
+                        <input asp-for="DateOfBirth" type="date" class="form-control" placeholder="Date of birth" />
+                        <label asp-for="DateOfBirth"></label>
+                        <span asp-validation-for="DateOfBirth" class="text-danger small"></span>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="form-floating">
+                        <select asp-for="Gender" asp-items="@(new SelectList(AccountController.Genders))" class="form-select">
+                            <option value="">Select</option>
+                        </select>
+                        <label asp-for="Gender"></label>
+                        <span asp-validation-for="Gender" class="text-danger small"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-1">
+                <div class="col-sm-6">
+                    <div class="form-floating">
+                        <input asp-for="Password" class="form-control" autocomplete="new-password" placeholder="Password" />
+                        <label asp-for="Password"></label>
+                        <span asp-validation-for="Password" class="text-danger small"></span>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="form-floating">
+                        <input asp-for="ConfirmPassword" class="form-control" autocomplete="new-password" placeholder="Confirm password" />
+                        <label asp-for="ConfirmPassword"></label>
+                        <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+                    </div>
+                </div>
+            </div>
+            <p class="form-text mb-4">At least 8 characters, with an uppercase letter, a lowercase letter and a number.</p>
+
+            <button type="submit" class="btn btn-primary w-100 py-2">Create account</button>
+        </form>
+
+        <p class="text-center text-muted mt-4 mb-0">
+            Already have an account? <a asp-action="Login">Sign in</a>
+        </p>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

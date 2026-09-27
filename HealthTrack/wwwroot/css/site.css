@@ -165,11 +165,55 @@ main {
   margin-bottom: 1.5rem;
 }
 
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-  color: var(--bs-secondary-color);
-  text-align: end;
+.ht-auth-card {
+  max-width: 440px;
+  background-color: #fff;
+  border: 1px solid var(--ht-border);
+  border-top: 4px solid var(--ht-orange);
+  border-radius: .75rem;
+  box-shadow: 0 .75rem 2rem rgba(194, 65, 12, .08);
+  padding: 2.5rem 2rem;
 }
 
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
-  text-align: start;
+.ht-auth-card-wide {
+  max-width: 620px;
+}
+
+.ht-role-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .15rem;
+  padding: 1rem .5rem;
+  border: 2px solid var(--ht-border);
+  border-radius: .75rem;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color .15s, background-color .15s;
+}
+
+.ht-role-option i {
+  font-size: 1.6rem;
+  color: var(--ht-orange-dark);
+}
+
+.ht-role-option:hover {
+  border-color: var(--ht-orange);
+}
+
+.btn-check:checked + .ht-role-option {
+  border-color: var(--ht-orange);
+  background-color: var(--ht-orange-light);
+}
+
+.btn-check:focus-visible + .ht-role-option {
+  box-shadow: 0 0 0 .25rem rgba(234, 88, 12, .25);
+}
+
+.input-validation-error {
+  border-color: var(--bs-danger) !important;
+}
+
+.validation-summary-valid {
+  display: none;
 }

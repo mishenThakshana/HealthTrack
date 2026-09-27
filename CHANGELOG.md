@@ -2,9 +2,81 @@
 
 A log of every task completed on HealthTrack, newest first.
 
-## 2026-09-27 — Orange & white theme / layout
+## 2026-09-27 — Registration and login
 
 Commit: not committed yet
+
+### Added
+- `HealthTrack/Models/ViewModels/RegisterViewModel.cs`:
+  - Required: `FullName` (2–100 characters), `Email` (valid email, max 256), `Password` (8–100 characters), `ConfirmPassword` (must match `Password`), `Role` (defaults to Client).
+  - Optional: `DateOfBirth` (`DateOnly`), `Gender` (max 20 characters).
+- `HealthTrack/Models/ViewModels/LoginViewModel.cs` — `Email`, `Password`, `RememberMe`.
+- `HealthTrack/Controllers/AccountController.cs`:
+  - `Register` (GET): shows the form; redirects to Home if already signed in.
+  - `Register` (POST, anti-forgery token required):
+    - `Role` must be `Client` or `Trainer`; Admin can't be chosen, even by editing the form.
+    - `Gender` must be one of Male, Female, Other, Prefer not to say.
+    - `DateOfBirth` can't be in the future or before 1900.
+    - Creates the user (email is also the username; name and email are trimmed), assigns the role, logs the registration, signs the user in, shows a welcome message and redirects to Home.
+    - Identity errors appear on the form. The "username already taken" error is hidden because it repeats the "email already taken" one.
+  - `Login` (GET): shows the form and keeps `returnUrl`; redirects to Home if already signed in.
+  - `Login` (POST, anti-forgery token required):
+    - Signs in with `lockoutOnFailure: true` and honours "Remember me".
+    - Follows `returnUrl` only when it is a local URL, which blocks open redirects; otherwise goes to Home.
+    - Shows "Invalid email or password." for wrong credentials, or a 15-minute lockout message (also logged as a warning).
+  - `Logout` (POST, signed-in users only, anti-forgery token required): signs out, shows "You have been signed out." and redirects to Home.
+  - `AccessDenied` (GET).
+  - `RegisterableRoles` and `Genders` lists, shared with the views.
+- `HealthTrack/Views/Account/Login.cshtml` — centred sign-in card with floating-label email and password fields, "Remember me", an error summary and a link to register.
+- `HealthTrack/Views/Account/Register.cshtml` — wider card with:
+  - Client/Trainer choice shown as two selectable tiles.
+  - Full name and email fields, then date of birth + gender and password + confirm password side by side (stacked on phones).
+  - Password rules hint and a link to sign in.
+- `HealthTrack/Views/Account/AccessDenied.cshtml` — themed "Access denied" page with a "Back to home" button.
+- Both forms use the existing jQuery validation scripts, so errors appear before the form is submitted as well as after.
+
+### Changed
+- `HealthTrack/Data/ApplicationDbContext.cs` — `ConfigureConventions` now stores every `DateOnly` property through a `DateOnly`↔`DateTime` converter, keeping the column type `date`. Found in testing: `MySql.EntityFrameworkCore` threw `InvalidCastException: Unable to cast object of type 'System.DateTime' to type 'System.DateOnly'` when loading any user with a date of birth, which broke login for that user. No migration was needed because the schema is unchanged.
+- `HealthTrack/Views/Shared/_Layout.cshtml` — shows `TempData["Success"]` as a dismissible green alert above the page content.
+- `HealthTrack/Views/Home/Index.cshtml` — signed-in users see "Welcome back, {FullName}." instead of the Get started / Sign in buttons.
+- `HealthTrack/wwwroot/css/site.css`:
+  - New classes: `.ht-auth-card` (440px wide, orange top border), `.ht-auth-card-wide` (620px) and `.ht-role-option` (selectable tile with an orange border and tint when chosen, plus a focus ring).
+  - Invalid fields get a red border (`.input-validation-error`), and the empty error summary is hidden (`.validation-summary-valid`).
+  - Removed the template's floating-label placeholder rules, which made placeholders overlap the labels.
+- `README.md` — ticked off "Registration and login".
+
+### Environment / verification
+- Build: succeeded with 0 warnings and 0 errors.
+- Ran the app in Development on port 5299 and scripted the flows with curl and a cookie jar (`authtest.sh` in the session scratchpad, not in the repo). All passed after the fixes above:
+  - The Login, Register and AccessDenied pages load (200).
+  - Mismatched passwords → "Passwords do not match."
+  - Registering with `Role=Admin` → rejected ("Please choose a valid account type.").
+  - Weak password `password` → Identity's "digit" and "uppercase" errors.
+  - Future date of birth plus an invalid gender → both errors shown.
+  - Registration POST without an anti-forgery token → 400.
+  - Valid Trainer registration → 302 to Home. The welcome message and "Welcome back, Test Trainer" both appeared.
+  - Opening Login while signed in → 302 to Home.
+  - Duplicate email → a single "Email '…' is already taken." error.
+  - Logout → 302 to Home.
+  - Wrong password → "Invalid email or password."
+  - `returnUrl=https://evil.com` → 302 to Home, so the open redirect is blocked.
+  - `returnUrl=/Home/Privacy` → 302 to `/Home/Privacy`.
+  - Seeded admin login → 302 to Home.
+  - 5 wrong passwords, then the correct one → lockout message.
+  - MySQL: users stored with the correct role, date of birth and gender; passwords are hashed with the Identity v3 format (`AQAAAA…`); `LockoutEnd` is set on the locked account.
+- Checked headless Chrome screenshots of Login and Register at 1200px and Register at 520px.
+- Cleanup: deleted the four test accounts (`test…@example.com`, `lock…@example.com`) from `AspNetUsers`; only `admin@healthtrack.local` remains.
+- Your `dotnet watch` on port 5182 was left untouched.
+
+### Notes
+- Admin accounts can't be registered. The only admin is the seeded one; admin-managed user creation can come with the admin dashboard.
+- Email confirmation isn't enabled (`RequireConfirmedAccount` is off) because no email sender is configured.
+- After sign-in everyone lands on Home. Role-based dashboards are the next checklist item.
+- The navbar shows the signed-in user's username, which is their email address.
+
+## 2026-09-27 — Orange & white theme / layout
+
+Commit: `e9b28e6`
 
 ### Added
 - `HealthTrack/Views/Shared/_LoginPartial.cshtml` — navbar section that depends on sign-in state:
