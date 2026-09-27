@@ -1,8 +1,55 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@{
+    ViewData["Title"] = "Home";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<section class="ht-hero">
+    <div class="container">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-7">
+                <span class="badge rounded-pill bg-primary-subtle text-primary mb-3 px-3 py-2">Health &amp; Fitness Management</span>
+                <h1 class="display-5 mb-3">Track your health. <span class="text-primary">Reach your goals.</span></h1>
+                <p class="lead mb-4">Log workouts, meals and health metrics, follow plans from your trainer, and book consultations, all in one place.</p>
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-primary btn-lg px-4" asp-controller="Account" asp-action="Register">Get started</a>
+                    <a class="btn btn-outline-primary btn-lg px-4" asp-controller="Account" asp-action="Login">Sign in</a>
+                </div>
+            </div>
+            <div class="col-lg-5 text-center d-none d-lg-block">
+                <i class="bi bi-heart-pulse text-primary" style="font-size: 10rem;"></i>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="container py-5">
+    <div class="row g-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="ht-card h-100 p-4">
+                <div class="ht-icon mb-3"><i class="bi bi-activity"></i></div>
+                <h5 class="fw-semibold">Workouts &amp; Diet</h5>
+                <p class="text-muted mb-0">Personalised workout and diet plans created by your trainer.</p>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="ht-card h-100 p-4">
+                <div class="ht-icon mb-3"><i class="bi bi-graph-up-arrow"></i></div>
+                <h5 class="fw-semibold">Progress Tracking</h5>
+                <p class="text-muted mb-0">See trends in weight, BMI and calories burned over time.</p>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="ht-card h-100 p-4">
+                <div class="ht-icon mb-3"><i class="bi bi-calendar-check"></i></div>
+                <h5 class="fw-semibold">Appointments</h5>
+                <p class="text-muted mb-0">Book consultations with trainers and healthcare professionals.</p>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="ht-card h-100 p-4">
+                <div class="ht-icon mb-3"><i class="bi bi-bell"></i></div>
+                <h5 class="fw-semibold">Reminders</h5>
+                <p class="text-muted mb-0">Never miss a workout, meal or appointment.</p>
+            </div>
+        </div>
+    </div>
+</section>

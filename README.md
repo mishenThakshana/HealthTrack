@@ -160,7 +160,7 @@ HealthTrack/
 
 - [x] Project initialization (ASP.NET Core MVC, EF Core, MySQL provider, Identity packages)
 - [x] Database context and Identity setup with roles (Client, Trainer, Admin)
-- [ ] Orange & white theme / layout
+- [x] Orange & white theme / layout
 - [ ] Registration and login
 - [ ] Role-based dashboards
 - [ ] Workout & diet management

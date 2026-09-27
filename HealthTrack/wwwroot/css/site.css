@@ -1,3 +1,23 @@
+:root {
+  --ht-orange: #ea580c;
+  --ht-orange-dark: #c2410c;
+  --ht-orange-light: #fff7ed;
+  --ht-orange-soft: #ffedd5;
+  --ht-text: #1f2937;
+  --ht-muted: #6b7280;
+  --ht-border: #f1e4d8;
+
+  --bs-primary: var(--ht-orange);
+  --bs-primary-rgb: 234, 88, 12;
+  --bs-link-color: var(--ht-orange-dark);
+  --bs-link-color-rgb: 194, 65, 12;
+  --bs-link-hover-color: #9a3412;
+  --bs-link-hover-color-rgb: 154, 52, 18;
+  --bs-body-color: var(--ht-text);
+  --bs-body-font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --bs-border-radius: .5rem;
+}
+
 html {
   font-size: 14px;
 }
@@ -8,17 +28,141 @@ html {
   }
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
-html {
-  position: relative;
-  min-height: 100%;
-}
-
 body {
-  margin-bottom: 60px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #fff;
+}
+
+main {
+  flex: 1 0 auto;
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--ht-orange);
+  --bs-btn-border-color: var(--ht-orange);
+  --bs-btn-hover-bg: var(--ht-orange-dark);
+  --bs-btn-hover-border-color: var(--ht-orange-dark);
+  --bs-btn-active-bg: #9a3412;
+  --bs-btn-active-border-color: #9a3412;
+  --bs-btn-disabled-bg: var(--ht-orange);
+  --bs-btn-disabled-border-color: var(--ht-orange);
+  font-weight: 600;
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--ht-orange-dark);
+  --bs-btn-border-color: var(--ht-orange);
+  --bs-btn-hover-bg: var(--ht-orange);
+  --bs-btn-hover-border-color: var(--ht-orange);
+  --bs-btn-active-bg: var(--ht-orange-dark);
+  --bs-btn-active-border-color: var(--ht-orange-dark);
+  font-weight: 600;
+}
+
+.btn-light {
+  --bs-btn-color: var(--ht-orange-dark);
+  font-weight: 600;
+}
+
+.text-primary {
+  color: var(--ht-orange-dark) !important;
+}
+
+.bg-primary-subtle {
+  background-color: var(--ht-orange-light) !important;
+}
+
+.btn:focus-visible, .form-control:focus, .form-select:focus, .form-check-input:focus {
+  border-color: var(--ht-orange);
+  box-shadow: 0 0 0 .25rem rgba(234, 88, 12, .25);
+}
+
+.form-check-input:checked {
+  background-color: var(--ht-orange);
+  border-color: var(--ht-orange);
+}
+
+.ht-navbar {
+  background-color: var(--ht-orange);
+  box-shadow: 0 2px 8px rgba(194, 65, 12, .25);
+}
+
+.ht-navbar .navbar-brand {
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.ht-navbar .nav-link {
+  color: rgba(255, 255, 255, .9);
+  font-weight: 500;
+}
+
+.ht-navbar .nav-link:hover, .ht-navbar .nav-link:focus, .ht-navbar .nav-link.active {
+  color: #fff;
+}
+
+.ht-navbar .navbar-toggler {
+  border-color: rgba(255, 255, 255, .6);
+}
+
+.ht-footer {
+  flex-shrink: 0;
+  border-top: 3px solid var(--ht-orange);
+  background-color: #fff;
+  color: var(--ht-muted);
+  padding: 1.25rem 0;
+  font-size: .9rem;
+}
+
+.ht-hero {
+  background: linear-gradient(135deg, var(--ht-orange-light) 0%, #fff 60%);
+  border-bottom: 1px solid var(--ht-border);
+  padding: 4.5rem 0;
+}
+
+.ht-hero h1 {
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+
+.ht-hero .lead {
+  color: var(--ht-muted);
+  max-width: 36rem;
+}
+
+.ht-card {
+  border: 1px solid var(--ht-border);
+  border-radius: .75rem;
+  background-color: #fff;
+  transition: box-shadow .2s, transform .2s;
+}
+
+.ht-card:hover {
+  box-shadow: 0 .5rem 1.5rem rgba(234, 88, 12, .12);
+  transform: translateY(-2px);
+}
+
+.ht-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: .75rem;
+  background-color: var(--ht-orange-soft);
+  color: var(--ht-orange-dark);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+}
+
+.ht-page-header {
+  border-bottom: 3px solid var(--ht-orange);
+  padding-bottom: .5rem;
+  margin-bottom: 1.5rem;
 }
 
 .form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {

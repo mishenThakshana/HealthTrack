@@ -2,6 +2,49 @@
 
 A log of every task completed on HealthTrack, newest first.
 
+## 2026-09-27 — Orange & white theme / layout
+
+Commit: not committed yet
+
+### Added
+- `HealthTrack/Views/Shared/_LoginPartial.cshtml` — navbar section that depends on sign-in state:
+  - Signed out: "Login" link and a white "Register" button (`/Account/Login`, `/Account/Register`).
+  - Signed in: the user's name and a "Logout" button that posts to `/Account/Logout`.
+  - The Account pages aren't built yet, so these links return 404 for now.
+- Google Fonts **Inter** (weights 400–800) and **Bootstrap Icons 1.11.3** (jsDelivr CDN), loaded in the layout.
+
+### Changed
+- `HealthTrack/wwwroot/css/site.css` — rewritten as the theme:
+  - Colour tokens on `:root`: `--ht-orange` `#ea580c`, `--ht-orange-dark` `#c2410c`, `--ht-orange-light` `#fff7ed`, `--ht-orange-soft` `#ffedd5`, text `#1f2937`, muted `#6b7280`, border `#f1e4d8`.
+  - Bootstrap variables overridden: primary colour, link and hover colours, body text colour, font family (Inter), border radius `.5rem`.
+  - `.btn-primary`, `.btn-outline-primary`, `.btn-light`, `.text-primary`, `.bg-primary-subtle`, form focus rings and checked checkboxes use the orange palette.
+  - Sticky footer uses flexbox on `body` instead of the template's absolutely positioned footer.
+  - New classes: `.ht-navbar` (orange bar with white links), `.ht-footer` (white with a 3px orange top border), `.ht-hero` (orange-to-white gradient banner), `.ht-card` (bordered card with an orange hover shadow), `.ht-icon` (orange rounded icon tile), `.ht-page-header` (heading with an orange underline).
+  - Removed the template's blue colours (`#1b6ec2`, `#258cfb`, `#0077cc`).
+- `HealthTrack/Views/Shared/_Layout.cshtml`:
+  - Orange navbar with a heart-pulse brand icon, collapsing below the `md` breakpoint (`#mainNav`), plus `_LoginPartial` on the right.
+  - Page content now sits directly in `<main>` so pages can use full-width sections; each page adds its own `.container`.
+  - Footer shows the current year, a tagline and a Privacy link.
+  - Removed the `HealthTrack.styles.css` link because there are no longer any per-view CSS files.
+- `HealthTrack/Views/Home/Index.cshtml` — replaced the template welcome page with a hero section ("Track your health. Reach your goals.", "Get started" and "Sign in" buttons) and four feature cards: Workouts & Diet, Progress Tracking, Appointments, Reminders.
+- `HealthTrack/Views/Home/Privacy.cshtml` — themed page header and a short privacy statement.
+- `HealthTrack/Views/Shared/Error.cshtml` — themed "Something went wrong" page with the request ID and a "Back to home" button. Removed the developer-facing text about the Development environment.
+- `README.md` — ticked off "Orange & white theme / layout".
+
+### Removed
+- `HealthTrack/Views/Shared/_Layout.cshtml.css` — its styles were merged into `site.css`.
+
+### Environment / verification
+- Build: succeeded with 0 warnings and 0 errors.
+- Ran the app in Development on a separate port (`--urls http://localhost:5299`) because your `dotnet watch` session already held 5182. Home, Privacy and Error all returned HTTP 200.
+- Checked headless Chrome screenshots at 1400px (desktop) and 520px (mobile, with the menu collapsed).
+- Fixed a bug found in the screenshots: the collapsed-menu icon was rendering dark because of an unnecessary `filter: invert` rule, which I removed.
+- Incident: during the first check, my cleanup command (`pkill -f "HealthTrack/bin"`) also stopped the app process running under your `dotnet watch`, which needs a restart or a file save to come back.
+
+### Notes
+- The fonts and icons load from CDNs, so the pages need internet access to look right.
+- The pages are responsive. Screenshots narrower than about 500px aren't reliable in headless Chrome, which enforces a minimum window width.
+
 ## 2026-09-27 — Database context and Identity setup with roles
 
 Commit: `290a598`
