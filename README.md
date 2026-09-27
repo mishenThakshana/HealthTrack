@@ -105,7 +105,7 @@ dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=localhost;
 
 ### 4. Apply database migrations
 
-Once migrations exist in the project:
+Migrations also run automatically on startup, which seeds the roles and (in Development) an admin account `admin@healthtrack.local` / `Admin@12345`. To apply them manually:
 
 ```bash
 dotnet ef database update --project HealthTrack
@@ -159,7 +159,7 @@ HealthTrack/
 ## Progress
 
 - [x] Project initialization (ASP.NET Core MVC, EF Core, MySQL provider, Identity packages)
-- [ ] Database context and Identity setup with roles (Client, Trainer, Admin)
+- [x] Database context and Identity setup with roles (Client, Trainer, Admin)
 - [ ] Orange & white theme / layout
 - [ ] Registration and login
 - [ ] Role-based dashboards
