@@ -1,6 +1,6 @@
 # HealthTrack
 
-**Personal Health & Fitness Management System** built with ASP.NET Core MVC and MySQL.
+**Personal Health & Fitness Management System** built with ASP.NET Core MVC and Microsoft SQL Server.
 
 HealthTrack is a digital platform designed to help individuals track and improve their health and fitness. Users can monitor their exercise routines, diet, health metrics, and appointments with healthcare professionals. The system also provides tools for trainers and administrators to manage clients, track progress, and generate reports.
 
@@ -44,15 +44,15 @@ HealthTrack is a digital platform designed to help individuals track and improve
 | Layer | Technology |
 |-------|------------|
 | Framework | ASP.NET Core MVC (.NET 10) |
-| Database | MySQL 8+ |
-| ORM | Entity Framework Core 10 (`MySql.EntityFrameworkCore`) |
+| Database | Microsoft SQL Server 2022 (Docker) |
+| ORM | Entity Framework Core 10 (`Microsoft.EntityFrameworkCore.SqlServer`) |
 | Authentication | ASP.NET Core Identity |
 | Frontend | Razor Views, Bootstrap, jQuery |
 
 ## Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- [MySQL Server 8+](https://dev.mysql.com/downloads/mysql/) (or MySQL via Docker / XAMPP / MAMP)
+- [Docker](https://www.docker.com/products/docker-desktop/) running SQL Server 2022 (or any SQL Server 2019+ instance)
 - An IDE: Visual Studio 2022+, JetBrains Rider, or VS Code with the C# Dev Kit
 
 Verify the SDK:
@@ -79,29 +79,29 @@ dotnet tool restore
 
 `dotnet tool restore` installs the pinned `dotnet-ef` CLI from `dotnet-tools.json`.
 
-### 3. Configure the database
+### 3. Start SQL Server and configure the connection
 
-Create the database in MySQL:
-
-```sql
-CREATE DATABASE healthtrack;
-```
-
-Update the connection string in `HealthTrack/appsettings.json` to match your MySQL credentials:
-
-```json
-"ConnectionStrings": {
-  "DefaultConnection": "Server=localhost;Port=3306;Database=healthtrack;User=root;Password=yourpassword;"
-}
-```
-
-To avoid committing credentials, you can use user secrets instead:
+If you don't already have a SQL Server container, start one (the password must meet SQL Server's complexity rules):
 
 ```bash
-cd HealthTrack
-dotnet user-secrets init
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=localhost;Port=3306;Database=healthtrack;User=root;Password=yourpassword;"
+docker run -d --name sql -p 1433:1433 \
+  -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD='YourStrong@Passw0rd' \
+  mcr.microsoft.com/mssql/server:2022-latest
 ```
+
+An existing container can be started again with `docker start sql`.
+
+`HealthTrack/appsettings.json` holds a template connection string with a `YOUR_PASSWORD` placeholder. Set the real one with user secrets so the password stays out of git (the project already has a `UserSecretsId`):
+
+```bash
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
+  "Server=localhost,1433;Database=HealthTrack;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;MultipleActiveResultSets=True" \
+  --project HealthTrack
+```
+
+User secrets are only loaded in the Development environment; elsewhere supply `ConnectionStrings__DefaultConnection` as an environment variable. `TrustServerCertificate=True` is needed because the Docker image uses a self-signed certificate.
+
+You don't need to create the database — the first migration creates `HealthTrack` automatically.
 
 ### 4. Apply database migrations
 
@@ -145,9 +145,10 @@ dotnet dev-certs https --trust
 HealthTrack/
 ├── HealthTrack.slnx          # Solution file
 ├── dotnet-tools.json         # Local tools (dotnet-ef)
-├── system.txt                # Original system specification
 └── HealthTrack/
     ├── Controllers/          # MVC controllers
+    ├── Data/                 # DbContext, roles, startup seeding
+    ├── Migrations/           # EF Core migrations (SQL Server)
     ├── Models/               # Domain and view models
     ├── Views/                # Razor views
     ├── wwwroot/              # Static files (css, js, lib)
@@ -158,10 +159,11 @@ HealthTrack/
 
 ## Progress
 
-- [x] Project initialization (ASP.NET Core MVC, EF Core, MySQL provider, Identity packages)
+- [x] Project initialization (ASP.NET Core MVC, EF Core, Identity packages)
 - [x] Database context and Identity setup with roles (Client, Trainer, Admin)
 - [x] Orange & white theme / layout
 - [x] Registration and login
+- [x] Switched database from MySQL to SQL Server (Docker)
 - [ ] Role-based dashboards
 - [ ] Workout & diet management
 - [ ] Appointment system
