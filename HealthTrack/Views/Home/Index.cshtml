@@ -16,7 +16,8 @@
                 <p class="lead mb-4">Log workouts, meals and health metrics, follow plans from your trainer, and book consultations, all in one place.</p>
                 @if (currentUser is not null)
                 {
-                    <p class="fs-5 mb-0">Welcome back, <span class="fw-semibold text-primary">@currentUser.FullName</span>.</p>
+                    <p class="fs-5 mb-3">Welcome back, <span class="fw-semibold text-primary">@currentUser.FullName</span>.</p>
+                    <a class="btn btn-primary btn-lg px-4" asp-controller="Dashboard" asp-action="Index">Go to dashboard</a>
                 }
                 else
                 {

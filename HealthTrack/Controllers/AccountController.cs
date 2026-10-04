@@ -19,7 +19,7 @@ public class AccountController(
     public IActionResult Register()
     {
         if (signInManager.IsSignedIn(User))
-            return RedirectToAction("Index", "Home");
+            return RedirectToAction("Index", "Dashboard");
 
         return View(new RegisterViewModel());
     }
@@ -61,14 +61,14 @@ public class AccountController(
 
         await signInManager.SignInAsync(user, isPersistent: false);
         TempData["Success"] = $"Welcome to HealthTrack, {user.FullName}!";
-        return RedirectToAction("Index", "Home");
+        return RedirectToAction("Index", "Dashboard");
     }
 
     [HttpGet, AllowAnonymous]
     public IActionResult Login(string? returnUrl = null)
     {
         if (signInManager.IsSignedIn(User))
-            return RedirectToAction("Index", "Home");
+            return RedirectToAction("Index", "Dashboard");
 
         ViewData["ReturnUrl"] = returnUrl;
         return View(new LoginViewModel());
@@ -88,7 +88,7 @@ public class AccountController(
         {
             if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                 return LocalRedirect(returnUrl);
-            return RedirectToAction("Index", "Home");
+            return RedirectToAction("Index", "Dashboard");
         }
 
         if (result.IsLockedOut)

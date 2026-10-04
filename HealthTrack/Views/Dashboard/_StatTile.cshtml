@@ -1,0 +1,10 @@
+@model HealthTrack.Models.ViewModels.StatTile
+
+<div class="ht-stat h-100">
+    <div class="ht-icon"><i class="bi @Model.Icon"></i></div>
+    <div>
+        <div class="ht-stat-label">@Model.Label</div>
+        <div class="ht-stat-value">@Model.Value</div>
+        <div class="ht-stat-hint">@Model.Hint</div>
+    </div>
+</div>

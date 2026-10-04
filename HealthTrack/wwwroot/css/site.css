@@ -256,3 +256,235 @@ main {
   padding: 0;
   list-style: none;
 }
+
+.ht-dash-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: .75rem;
+  border-bottom: 3px solid var(--ht-orange);
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ht-stat {
+  display: flex;
+  align-items: flex-start;
+  gap: .85rem;
+  padding: 1.1rem;
+  border: 1px solid var(--ht-border);
+  border-radius: .75rem;
+  background-color: #fff;
+}
+
+.ht-stat .ht-icon {
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 1.15rem;
+}
+
+.ht-stat-label {
+  color: var(--ht-muted);
+  font-size: .85rem;
+  font-weight: 500;
+}
+
+.ht-stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.ht-stat-hint {
+  color: var(--ht-muted);
+  font-size: .78rem;
+}
+
+.ht-panel {
+  border: 1px solid var(--ht-border);
+  border-radius: .75rem;
+  background-color: #fff;
+  padding: 1.25rem;
+}
+
+.ht-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.ht-panel-header h2 {
+  font-weight: 600;
+}
+
+.ht-panel-header .bi {
+  color: var(--ht-orange-dark);
+  margin-right: .35rem;
+}
+
+.ht-empty {
+  text-align: center;
+  color: var(--ht-muted);
+  padding: 1.5rem 1rem;
+  border: 1px dashed var(--ht-border);
+  border-radius: .5rem;
+  background-color: var(--ht-orange-light);
+}
+
+.ht-empty .bi {
+  display: block;
+  font-size: 1.75rem;
+  color: var(--ht-orange);
+  margin-bottom: .35rem;
+}
+
+.ht-profile dt {
+  color: var(--ht-muted);
+  font-size: .8rem;
+  font-weight: 500;
+}
+
+.ht-profile dd {
+  margin-bottom: .75rem;
+}
+
+.ht-profile dd:last-child {
+  margin-bottom: 0;
+}
+
+.ht-table th {
+  color: var(--ht-muted);
+  font-size: .8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  border-bottom-color: var(--ht-border);
+}
+
+.ht-table td {
+  border-bottom-color: var(--ht-border);
+}
+
+.ht-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.ht-navbar .nav-link {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .4rem .8rem;
+  border-radius: .5rem;
+  transition: background-color .15s;
+}
+
+.ht-navbar .nav-link:hover, .ht-navbar .nav-link.active {
+  background-color: rgba(255, 255, 255, .18);
+}
+
+.ht-navbar .nav-link.active {
+  font-weight: 600;
+}
+
+.ht-nav-login {
+  color: #fff;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.ht-nav-login:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.ht-user-toggle {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .25rem .6rem .25rem .25rem;
+  border: 1px solid rgba(255, 255, 255, .35);
+  border-radius: 2rem;
+  background-color: rgba(255, 255, 255, .12);
+  color: #fff;
+  transition: background-color .15s;
+}
+
+.ht-user-toggle:hover, .ht-user-toggle[aria-expanded="true"] {
+  background-color: rgba(255, 255, 255, .22);
+}
+
+.ht-user-toggle:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.ht-avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background-color: #fff;
+  color: var(--ht-orange-dark);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ht-user-text {
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+  text-align: left;
+}
+
+.ht-user-name {
+  font-size: .875rem;
+  font-weight: 600;
+}
+
+.ht-user-role {
+  font-size: .7rem;
+  opacity: .85;
+}
+
+.ht-user-menu {
+  min-width: 15rem;
+  border: 1px solid var(--ht-border);
+  border-radius: .75rem;
+  box-shadow: 0 .75rem 2rem rgba(194, 65, 12, .15);
+  padding: .5rem;
+  margin-top: .5rem !important;
+}
+
+.ht-user-menu .dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  border-radius: .5rem;
+  padding: .5rem .75rem;
+  font-weight: 500;
+}
+
+.ht-user-menu .dropdown-item .bi {
+  color: var(--ht-orange-dark);
+}
+
+.ht-user-menu .dropdown-item:hover, .ht-user-menu .dropdown-item:focus {
+  background-color: var(--ht-orange-light);
+  color: var(--ht-orange-dark);
+}
+
+.ht-user-menu .dropdown-item:active {
+  background-color: var(--ht-orange-soft);
+}
+
+@media (max-width: 767.98px) {
+  .ht-navbar .navbar-nav {
+    padding: .5rem 0;
+  }
+}

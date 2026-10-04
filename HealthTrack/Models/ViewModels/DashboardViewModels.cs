@@ -1,0 +1,28 @@
+namespace HealthTrack.Models.ViewModels;
+
+public record StatTile(string Icon, string Label, string Value, string Hint);
+
+public record EmptyState(string Icon, string Message);
+
+public record RecentUser(string FullName, string Email, string Role, DateTime CreatedAt);
+
+public class AdminDashboardViewModel
+{
+    public int TotalUsers { get; init; }
+    public int Clients { get; init; }
+    public int Trainers { get; init; }
+    public int NewThisWeek { get; init; }
+    public int LockedOut { get; init; }
+    public IReadOnlyList<RecentUser> RecentUsers { get; init; } = [];
+}
+
+public class MemberDashboardViewModel
+{
+    public string FullName { get; init; } = string.Empty;
+    public string Email { get; init; } = string.Empty;
+    public int? Age { get; init; }
+    public string? Gender { get; init; }
+    public DateTime MemberSince { get; init; }
+
+    public string FirstName => FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? FullName;
+}

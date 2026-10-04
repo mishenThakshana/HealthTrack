@@ -6,6 +6,9 @@ namespace HealthTrack.Data;
 
 public static class DbSeeder
 {
+    private sealed record SeedUser(
+        string Email, string Password, string FullName, string Role, DateOnly? DateOfBirth, string? Gender);
+
     public static async Task SeedAsync(IServiceProvider services)
     {
         using var scope = services.CreateScope();
@@ -20,29 +23,39 @@ public static class DbSeeder
                 await roleManager.CreateAsync(new IdentityRole(role));
         }
 
-        var config = provider.GetRequiredService<IConfiguration>();
-        var email = config["SeedAdmin:Email"];
-        var password = config["SeedAdmin:Password"];
-        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
-            return;
+        var seedUsers = provider.GetRequiredService<IConfiguration>()
+            .GetSection("SeedUsers").Get<SeedUser[]>() ?? [];
 
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
-        if (await userManager.FindByEmailAsync(email) is not null)
-            return;
+        foreach (var seed in seedUsers)
+            await SeedUserAsync(userManager, seed);
+    }
 
-        var admin = new ApplicationUser
+    private static async Task SeedUserAsync(UserManager<ApplicationUser> userManager, SeedUser seed)
+    {
+        if (!Roles.All.Contains(seed.Role))
+            throw new InvalidOperationException($"Seed user {seed.Email} has unknown role '{seed.Role}'.");
+
+        var user = await userManager.FindByEmailAsync(seed.Email);
+        if (user is null)
         {
-            UserName = email,
-            Email = email,
-            EmailConfirmed = true,
-            FullName = "System Administrator"
-        };
+            user = new ApplicationUser
+            {
+                UserName = seed.Email,
+                Email = seed.Email,
+                EmailConfirmed = true,
+                FullName = seed.FullName,
+                DateOfBirth = seed.DateOfBirth,
+                Gender = seed.Gender
+            };
 
-        var result = await userManager.CreateAsync(admin, password);
-        if (!result.Succeeded)
-            throw new InvalidOperationException(
-                "Failed to seed admin: " + string.Join("; ", result.Errors.Select(e => e.Description)));
+            var result = await userManager.CreateAsync(user, seed.Password);
+            if (!result.Succeeded)
+                throw new InvalidOperationException(
+                    $"Failed to seed {seed.Email}: " + string.Join("; ", result.Errors.Select(e => e.Description)));
+        }
 
-        await userManager.AddToRoleAsync(admin, Roles.Admin);
+        if (!await userManager.IsInRoleAsync(user, seed.Role))
+            await userManager.AddToRoleAsync(user, seed.Role);
     }
 }

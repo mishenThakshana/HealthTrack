@@ -1,0 +1,71 @@
+@model HealthTrack.Models.ViewModels.AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Admin dashboard";
+}
+
+<div class="container py-4">
+    <div class="ht-dash-header">
+        <div>
+            <span class="badge rounded-pill bg-primary-subtle text-primary mb-2">Administrator</span>
+            <h1 class="h3 mb-1">System overview</h1>
+            <p class="text-muted mb-0">User activity, system usage and trainer assignments.</p>
+        </div>
+        <span class="text-muted small">@DateTime.Today.ToString("dddd, d MMMM yyyy")</span>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-people", "Total users", Model.TotalUsers.ToString(), $"{Model.NewThisWeek} new this week")' /></div>
+        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-person", "Clients", Model.Clients.ToString(), "Registered clients")' /></div>
+        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-person-workspace", "Trainers", Model.Trainers.ToString(), "Registered trainers")' /></div>
+        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-lock", "Locked accounts", Model.LockedOut.ToString(), "After failed sign-ins")' /></div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="ht-panel h-100">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-person-plus"></i> Recent registrations</h2>
+                </div>
+                @if (Model.RecentUsers.Count == 0)
+                {
+                    <partial name="_EmptyState" model='new EmptyState("bi-people", "No users yet.")' />
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table ht-table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Role</th>
+                                    <th class="text-end">Joined</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var user in Model.RecentUsers)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="fw-semibold">@user.FullName</div>
+                                            <div class="small text-muted text-break">@user.Email</div>
+                                        </td>
+                                        <td><span class="badge rounded-pill bg-primary-subtle text-primary">@user.Role</span></td>
+                                        <td class="text-end text-nowrap small">@user.CreatedAt.ToLocalTime().ToString("d MMM yyyy")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="ht-panel h-100">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-diagram-3"></i> Trainer assignments</h2>
+                </div>
+                <partial name="_EmptyState" model='new EmptyState("bi-link-45deg", "No clients have been assigned to trainers yet.")' />
+            </div>
+        </div>
+    </div>
+</div>

@@ -105,7 +105,7 @@ You don't need to create the database — the first migration creates `HealthTra
 
 ### 4. Apply database migrations
 
-Migrations also run automatically on startup, which seeds the roles and (in Development) an admin account `admin@healthtrack.local` / `Admin@12345`. To apply them manually:
+Migrations also run automatically on startup, which seeds the roles and, in Development, one account per role (see [Seeded accounts](#seeded-accounts)). To apply them manually:
 
 ```bash
 dotnet ef database update --project HealthTrack
@@ -139,6 +139,18 @@ If the HTTPS certificate is not trusted, run:
 dotnet dev-certs https --trust
 ```
 
+## Seeded accounts
+
+In Development, these accounts are created on startup if they don't already exist. They are defined under `SeedUsers` in `HealthTrack/appsettings.Development.json`.
+
+| Role | Email | Password | Name |
+|------|-------|----------|------|
+| Admin | `admin@healthtrack.local` | `Admin@12345` | System Administrator |
+| Trainer | `trainer@healthtrack.local` | `Trainer@12345` | Alex Morgan |
+| Client | `client@healthtrack.local` | `Client@12345` | Jamie Silva |
+
+These are for local development only. Don't use them in production.
+
 ## Project Structure
 
 ```
@@ -164,7 +176,7 @@ HealthTrack/
 - [x] Orange & white theme / layout
 - [x] Registration and login
 - [x] Switched database from MySQL to SQL Server (Docker)
-- [ ] Role-based dashboards
+- [x] Role-based dashboards
 - [ ] Workout & diet management
 - [ ] Appointment system
 - [ ] Progress tracking & analytics

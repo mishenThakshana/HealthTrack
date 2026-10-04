@@ -2,9 +2,138 @@
 
 A log of every task completed on HealthTrack, newest first.
 
-## 2026-10-04 — Center error and success messages
+## 2026-10-04 — Redesigned top bar
 
 Commit: not committed yet
+
+Replaces the separate Dashboard button, username text and Logout button from the previous entry, which looked cluttered.
+
+### Changed
+- `HealthTrack/Views/Shared/_Layout.cshtml`:
+  - Nav links now have icons: Home (`bi-house`), Dashboard (`bi-speedometer2`, only when signed in) and Privacy (`bi-shield-check`).
+  - The current page's link is highlighted. A `NavActive(controller, action?)` helper at the top of the layout compares the route values and adds `active`; any Dashboard page highlights Dashboard.
+  - `_LoginPartial` moved outside the collapsing menu, between the brand and the toggle. `order-md-last` keeps it on the far right on desktop.
+  - Removed the phone-only Dashboard button.
+- `HealthTrack/Views/Shared/_LoginPartial.cshtml` — rewritten:
+  - Signed in: a pill-shaped account button showing a white avatar with up to two initials, plus the full name and role (Admin/Trainer/Client). The name and role are hidden on phones, leaving just the avatar.
+  - Clicking it opens a dropdown with the full name and email, then "Dashboard" and "Sign out". Sign out is still a POST form with the anti-forgery token.
+  - Signed out: "Login" link and white "Register" button, visible without opening the menu on phones too.
+  - Loads the user with `UserManager.GetUserAsync` to show the full name instead of the email.
+- `HealthTrack/wwwroot/css/site.css` — new or changed rules:
+  - `.ht-navbar .nav-link`: rounded pill padding; translucent white background on hover and when active; bold when active.
+  - `.ht-nav-login`.
+  - `.ht-user-toggle`: translucent pill with a white border and a focus outline.
+  - `.ht-avatar`, `.ht-user-text`, `.ht-user-name`, `.ht-user-role`.
+  - `.ht-user-menu`: rounded dropdown with an orange-tinted shadow, orange icons, and orange-light hover on items.
+  - Extra vertical padding for the expanded menu on phones.
+
+### Environment / verification
+- Build: succeeded with 0 warnings and 0 errors.
+- Headless Chrome screenshots (fresh profile, port 5299):
+  - Signed out at 1200px and 420px: Login and Register visible on both; Home highlighted.
+  - Signed in as `trainer@healthtrack.local` at 1200px: Dashboard highlighted; "AM · Alex Morgan · Trainer" pill on the right; dropdown open showing name, email, Dashboard and Sign out.
+  - At 420px: avatar pill next to the hamburger; expanded menu shows Home / Dashboard (highlighted) / Privacy; dropdown open and fitting on screen.
+- Sign out from the dropdown (curl): POST `/Account/Logout` → 302 to Home; `/Dashboard` afterwards → 302 to Login.
+- Stopped only the port-5299 process and the headless Chrome instance.
+
+## 2026-10-04 — Dashboard button in the navbar
+
+Commit: not committed yet
+
+### Changed
+- `HealthTrack/Views/Shared/_LoginPartial.cshtml`:
+  - When signed in, a white "Dashboard" button (`btn-light`, `bi-speedometer2` icon) now sits before the username on desktop (`d-none d-md-block`).
+  - Logout is now an outline button (`btn-outline-light`), so Dashboard is the only solid button and stands out.
+- `HealthTrack/Views/Shared/_Layout.cshtml`:
+  - Removed the plain "Dashboard" text link from the left nav list. It looked the same as Home and Privacy and was hidden inside the collapsed menu on phones.
+  - On phones (`d-md-none`) the same Dashboard button sits next to the menu toggle, outside the collapsed menu, so it's always visible.
+
+### Environment / verification
+- Build: succeeded with 0 warnings and 0 errors.
+- Ran on port 5299, signed in as `client@healthtrack.local` and took headless Chrome screenshots of the navbar:
+  - At 1200px: Dashboard button, username, then outlined Logout.
+  - At 420px: Dashboard button next to the hamburger with the menu collapsed.
+- Signed out (curl): no Dashboard button; only Login and Register appear.
+- Stopped only the port-5299 process and the headless Chrome instance.
+
+### Notes
+- The Home page's "Go to dashboard" button stays.
+
+## 2026-10-04 — Seed one account per role
+
+Commit: not committed yet
+
+### Changed
+- `HealthTrack/appsettings.Development.json` — replaced the `SeedAdmin` section with a `SeedUsers` array (`Email`, `Password`, `FullName`, `Role`, optional `DateOfBirth` and `Gender`):
+  - Admin: `admin@healthtrack.local` / `Admin@12345`, "System Administrator".
+  - Trainer: `trainer@healthtrack.local` / `Trainer@12345`, "Alex Morgan", born 1990-03-15, Male.
+  - Client: `client@healthtrack.local` / `Client@12345`, "Jamie Silva", born 1998-07-22, Female.
+- `HealthTrack/Data/DbSeeder.cs`:
+  - Binds `SeedUsers` to a private `SeedUser` record and seeds each entry.
+  - A missing user is created with `EmailConfirmed = true`. If creation fails, startup throws with Identity's error messages.
+  - Assigns the configured role if the user doesn't have it yet, which also repairs an existing account that is missing its role.
+  - Throws if a seed entry has a role that isn't Client, Trainer or Admin.
+  - No `SeedUsers` section (for example outside Development) means no accounts are seeded; roles are still created.
+- `README.md` — new "Seeded accounts" section with a table of the three logins; the migrations step now points to it.
+
+### Environment / verification
+- Build: succeeded with 0 warnings and 0 errors.
+- Started the app in Development on port 5299. The existing admin was kept; the trainer and client were created.
+- Signed in as each account with curl: each went to `/Dashboard` and then to its own dashboard (`/Dashboard/Admin`, `/Dashboard/Trainer`, `/Dashboard/Client`). The client dashboard showed Jamie Silva, age 28, Female.
+- `sqlcmd`: each seeded account has the right role, date of birth, gender and `EmailConfirmed = 1`. Your `johndoe@gmail.com` (Client) is unchanged.
+- Restarted the app: still 4 users and 4 role assignments, so seeding doesn't create duplicates.
+- Stopped only the port-5299 process.
+
+### Notes
+- If you change a seeded account's password in the app, a restart won't reset it; the seeder only creates missing accounts and adds missing roles.
+
+## 2026-10-04 — Role-based dashboards
+
+Commit: not committed yet
+
+### Added
+- `HealthTrack/Controllers/DashboardController.cs` (`[Authorize]`):
+  - `Index` sends the user to their role's dashboard: Admin → `Admin`, Trainer → `Trainer`, Client → `Client`. A user with no role goes to Access denied.
+  - `Client` (`[Authorize(Roles = Client)]`) and `Trainer` (`[Authorize(Roles = Trainer)]`) load the signed-in user's profile: name, email, age worked out from date of birth, gender, and member-since date. If the user no longer exists, they are sent to sign in (`Challenge`).
+  - `Admin` (`[Authorize(Roles = Admin)]`) queries the database for: total users, client and trainer counts (grouped from `AspNetUserRoles`), registrations in the last 7 days, currently locked-out accounts (`LockoutEnd` in the future), and the 8 most recent registrations with their role.
+- `HealthTrack/Models/ViewModels/DashboardViewModels.cs` — `StatTile`, `EmptyState` and `RecentUser` records, plus `AdminDashboardViewModel` and `MemberDashboardViewModel` (with a `FirstName` helper for the greeting).
+- `HealthTrack/Views/Dashboard/`:
+  - `Client.cshtml` — "Hi, {first name}" header with role badge and date. Tiles for current weight, BMI, workouts this week and upcoming appointments. Panels for workout plan, diet schedule and upcoming appointments, plus a profile card.
+  - `Trainer.cshtml` — tiles for my clients, active plans, pending requests and appointments today. Panels for client progress and appointment requests, plus a profile card.
+  - `Admin.cshtml` — "System overview" with live tiles (total users + new this week, clients, trainers, locked accounts), a recent-registrations table (name, email, role badge, join date) and a trainer-assignments panel.
+  - Partials: `_StatTile`, `_EmptyState`, `_ProfileCard`.
+
+### Changed
+- `HealthTrack/Controllers/AccountController.cs` — after registering or signing in (with no `returnUrl`), and when opening Login/Register while already signed in, users now go to `/Dashboard` instead of Home. A local `returnUrl` is still followed first.
+- `HealthTrack/Views/Shared/_Layout.cshtml` — "Dashboard" navbar link, shown only when signed in.
+- `HealthTrack/Views/Home/Index.cshtml` — signed-in users get a "Go to dashboard" button under the welcome-back line.
+- `HealthTrack/Views/_ViewImports.cshtml` — added `@using HealthTrack.Models.ViewModels`.
+- `HealthTrack/wwwroot/css/site.css` — new classes: `.ht-dash-header` (title row with an orange underline), `.ht-stat` / `.ht-stat-label` / `.ht-stat-value` / `.ht-stat-hint` (stat tiles), `.ht-panel` / `.ht-panel-header` (dashboard sections, no hover lift), `.ht-empty` (dashed orange-tinted empty state), `.ht-profile` (profile definition list), `.ht-table` (muted uppercase headers, orange-tinted row borders).
+- `README.md` — ticked off "Role-based dashboards".
+- `CHANGELOG.md` — the two previous entries said "not committed yet"; both were included in `ba40a85`, so they now say so.
+
+### Environment / verification
+- Build: succeeded with 0 warnings and 0 errors.
+- Ran the app in Development on port 5299 and scripted the flows with curl and cookie jars (`dash.sh` in the session scratchpad):
+  - Signed out `/Dashboard` → 302 to Login with `ReturnUrl=/Dashboard`.
+  - Registered a Client (born 1995-05-10, Female) → 302 to `/Dashboard` → 302 to `/Dashboard/Client` (200). Page shows "Hi, Dash", age 31 and Female.
+  - Client opening `/Dashboard/Admin` or `/Dashboard/Trainer` → 302 to Access denied.
+  - Registered a Trainer without date of birth or gender → `/Dashboard/Trainer`; profile shows "Not set" for both. Trainer opening `/Dashboard/Client` → Access denied.
+  - Seeded admin login → `/Dashboard` → `/Dashboard/Admin`. Tiles showed 4 users / 4 new this week / 2 clients / 1 trainer / 0 locked, matching the database; the table listed all 4 users with the correct roles, newest first.
+  - Opening Login while signed in → 302 to `/Dashboard`.
+  - Login with `returnUrl=/Home/Privacy` → still redirects to `/Home/Privacy`.
+  - Home page, signed in: "Go to dashboard" button and Dashboard nav link present.
+- Screenshots: headless Chrome driven over the DevTools protocol with the curl session cookies (`shot.mjs` in the scratchpad). Checked Client, Trainer and Admin at 1200px, and Client and Admin at 420px (tiles go two per row; panels and the profile card stack).
+- Cleanup: deleted `dashclient@example.com` and `dashtrainer@example.com`. `admin@healthtrack.local` and your `johndoe@gmail.com` are untouched. Stopped only the port-5299 process and the headless Chrome instance.
+
+### Notes
+- Only the admin tiles and table use real data. The client and trainer tiles show `—` / `0` and the panels show empty states, because workouts, diet plans, measurements, appointments and trainer–client assignments don't exist yet. Each will be connected when its feature is built.
+- Age is calculated from today's server date and accounts for whether the birthday has happened yet this year.
+- Join dates are stored in UTC and shown in the server's local time.
+
+## 2026-10-04 — Center error and success messages
+
+Commit: `ba40a85`
 
 ### Changed
 - `HealthTrack/wwwroot/css/site.css`:
@@ -28,7 +157,7 @@ Commit: not committed yet
 
 ## 2026-10-04 — Switch database from MySQL to SQL Server
 
-Commit: not committed yet
+Commit: `ba40a85`
 
 ### Changed
 - `HealthTrack/HealthTrack.csproj`:
