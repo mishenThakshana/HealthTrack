@@ -1,8 +1,12 @@
+@using HealthTrack.Data
 @{
     string NavActive(string controller, string? action = null) =>
         string.Equals(ViewContext.RouteData.Values["controller"] as string, controller, StringComparison.OrdinalIgnoreCase)
         && (action is null || string.Equals(ViewContext.RouteData.Values["action"] as string, action, StringComparison.OrdinalIgnoreCase))
             ? "active" : string.Empty;
+
+    string NavActiveAny(params string[] controllers) =>
+        controllers.Any(c => NavActive(c) == "active") ? "active" : string.Empty;
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -45,11 +49,47 @@
                                 </a>
                             </li>
                         }
-                        <li class="nav-item">
-                            <a class="nav-link @NavActive("Home", "Privacy")" asp-controller="Home" asp-action="Privacy">
-                                <i class="bi bi-shield-check"></i> Privacy
-                            </a>
-                        </li>
+                        @if (User.IsInRole(Roles.Trainer))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @NavActive("Clients")" asp-controller="Clients" asp-action="Index">
+                                    <i class="bi bi-people"></i> Clients
+                                </a>
+                            </li>
+                        }
+                        @if (User.IsInRole(Roles.Trainer) || User.IsInRole(Roles.Client))
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle @NavActiveAny("WorkoutPlans", "DietPlans")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-clipboard-check"></i> Plans
+                                </a>
+                                <ul class="dropdown-menu ht-user-menu">
+                                    <li><a class="dropdown-item" asp-controller="WorkoutPlans" asp-action="Index"><i class="bi bi-activity"></i> Workout plans</a></li>
+                                    <li><a class="dropdown-item" asp-controller="DietPlans" asp-action="Index"><i class="bi bi-egg-fried"></i> Diet plans</a></li>
+                                </ul>
+                            </li>
+                        }
+                        @if (User.IsInRole(Roles.Client))
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle @NavActiveAny("WorkoutLogs", "MealLogs", "Measurements")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-journal-plus"></i> Track
+                                </a>
+                                <ul class="dropdown-menu ht-user-menu">
+                                    <li><a class="dropdown-item" asp-controller="WorkoutLogs" asp-action="Index"><i class="bi bi-activity"></i> Workouts</a></li>
+                                    <li><a class="dropdown-item" asp-controller="MealLogs" asp-action="Index"><i class="bi bi-egg-fried"></i> Meals</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Measurements" asp-action="Index"><i class="bi bi-rulers"></i> Measurements</a></li>
+                                </ul>
+                            </li>
+                        }
+                        @if (User.IsInRole(Roles.Admin))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @NavActive("TrainerAssignments")" asp-controller="TrainerAssignments" asp-action="Index">
+                                    <i class="bi bi-diagram-3"></i> Assignments
+                                </a>
+                            </li>
+                        }
                     </ul>
                 </div>
             </div>

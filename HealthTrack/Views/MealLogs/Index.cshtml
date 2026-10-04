@@ -1,0 +1,89 @@
+@model TrackingPageViewModel<MealLogFormViewModel, MealLog>
+@{
+    ViewData["Title"] = "Meal log";
+    var mealOptions = Enum.GetValues<MealType>().Select(t => new SelectListItem(t.ToString(), t.ToString()));
+    var days = Model.Entries.GroupBy(e => e.Date).ToList();
+}
+
+<div class="container py-4">
+    <div class="ht-dash-header">
+        <div>
+            <h1 class="h3 mb-1">Meal log</h1>
+            <p class="text-muted mb-0">Keep track of what you eat each day.</p>
+        </div>
+        <a class="btn btn-outline-primary btn-sm" asp-controller="DietPlans" asp-action="Index"><i class="bi bi-clipboard-check"></i> My diet plans</a>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-4">
+            <div class="ht-panel">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-plus-circle"></i> Log a meal</h2>
+                </div>
+                <form asp-action="Create" method="post" novalidate>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label asp-for="Form.Date" class="form-label"></label>
+                            <input asp-for="Form.Date" type="date" class="form-control" max="@HealthTrack.Helpers.Dates.Today.ToString("yyyy-MM-dd")" />
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="Form.MealType" class="form-label"></label>
+                            <select asp-for="Form.MealType" asp-items="mealOptions" class="form-select"></select>
+                        </div>
+                        <span asp-validation-for="Form.Date" class="text-danger small"></span>
+                        <span asp-validation-for="Form.MealType" class="text-danger small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Form.Description" class="form-label"></label>
+                        <textarea asp-for="Form.Description" class="form-control" rows="2" placeholder="e.g. Chicken salad and an apple"></textarea>
+                        <span asp-validation-for="Form.Description" class="text-danger small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Form.Calories" class="form-label"></label>
+                        <div class="input-group">
+                            <input asp-for="Form.Calories" type="number" class="form-control" />
+                            <span class="input-group-text">kcal</span>
+                        </div>
+                        <span asp-validation-for="Form.Calories" class="text-danger small"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-check-lg"></i> Save meal</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="ht-panel">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-clock-history"></i> History</h2>
+                </div>
+                @if (days.Count == 0)
+                {
+                    <partial name="_EmptyState" model='new EmptyState("bi-egg-fried", "No meals logged yet.")' />
+                }
+                @foreach (var day in days)
+                {
+                    var dayCalories = day.Sum(m => m.Calories ?? 0);
+                    <h3 class="ht-group-title d-flex justify-content-between">
+                        <span>@(day.Key == HealthTrack.Helpers.Dates.Today ? "Today" : day.Key.ToString("dddd, d MMM"))</span>
+                        @if (dayCalories > 0) { <span class="ht-group-meta">@dayCalories.ToString("N0") kcal total</span> }
+                    </h3>
+                    <ul class="list-unstyled ht-item-list">
+                        @foreach (var meal in day.OrderBy(m => m.MealType).ThenBy(m => m.Id))
+                        {
+                            <li>
+                                <span class="badge rounded-pill bg-primary-subtle text-primary ht-meal-badge">@meal.MealType</span>
+                                <div class="flex-grow-1">@meal.Description</div>
+                                @if (meal.Calories is not null) { <span class="small text-muted text-nowrap">@meal.Calories kcal</span> }
+                                <partial name="_DeleteButton" model='new DeleteButton("MealLogs", "Delete", new() { ["id"] = meal.Id.ToString() }, "Delete this meal entry?")' />
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

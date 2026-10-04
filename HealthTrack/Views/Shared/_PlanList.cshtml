@@ -1,0 +1,79 @@
+@model PlanListViewModel
+@{
+    var controller = (string)ViewData["PlanController"]!;
+    var noun = (string)ViewData["PlanNoun"]!;
+    var itemNoun = (string)ViewData["ItemNoun"]!;
+    var icon = (string)ViewData["PlanIcon"]!;
+}
+
+<div class="container py-4">
+    <div class="ht-dash-header">
+        <div>
+            <h1 class="h3 mb-1">@ViewData["Title"]</h1>
+            <p class="text-muted mb-0">
+                @(Model.IsTrainer ? $"{noun}s you've created for your clients." : $"{noun}s your trainer has created for you.")
+            </p>
+        </div>
+        @if (Model.IsTrainer)
+        {
+            <a class="btn btn-primary" asp-controller="@controller" asp-action="Create" asp-route-clientId="@Model.ClientFilter">
+                <i class="bi bi-plus-lg"></i> New @noun.ToLowerInvariant()
+            </a>
+        }
+    </div>
+
+    @if (Model.IsTrainer && Model.Clients.Any())
+    {
+        <form method="get" class="d-flex flex-wrap align-items-center gap-2 mb-3">
+            <label for="clientId" class="small text-muted">Client</label>
+            <select id="clientId" name="clientId" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                <option value="">All clients</option>
+                @foreach (var c in Model.Clients)
+                {
+                    <option value="@c.Value" selected="@c.Selected">@c.Text</option>
+                }
+            </select>
+            <noscript><button class="btn btn-sm btn-outline-primary">Filter</button></noscript>
+        </form>
+    }
+
+    @if (Model.Plans.Count == 0)
+    {
+        <div class="ht-panel">
+            <partial name="_EmptyState"
+                     model='new EmptyState(icon, Model.IsTrainer ? $"No {noun.ToLowerInvariant()}s yet. Create one for a client to get started." : $"Your trainer hasn’t created a {noun.ToLowerInvariant()} for you yet.")' />
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var plan in Model.Plans)
+            {
+                <div class="col-md-6 col-xl-4">
+                    <a class="ht-card ht-plan-card d-block h-100 p-3 text-reset text-decoration-none"
+                       asp-controller="@controller" asp-action="Details" asp-route-id="@plan.Id">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                            <div class="ht-icon"><i class="bi @icon"></i></div>
+                            <partial name="_PlanStatus" model="plan.IsActive" />
+                        </div>
+                        <h2 class="h6 fw-semibold mb-1">@plan.Title</h2>
+                        <div class="small text-muted mb-2">
+                            @if (Model.IsTrainer)
+                            {
+                                <span><i class="bi bi-person"></i> @plan.ClientName</span>
+                            }
+                            else
+                            {
+                                <span><i class="bi bi-person-badge"></i> @plan.TrainerName</span>
+                            }
+                        </div>
+                        <div class="small d-flex flex-wrap gap-3">
+                            <span><i class="bi bi-calendar3 text-primary"></i> @plan.StartDate.ToString("d MMM yyyy")@(plan.EndDate is { } end ? $" – {end:d MMM yyyy}" : "")</span>
+                            <span><i class="bi bi-list-check text-primary"></i> @plan.ItemCount @itemNoun@(plan.ItemCount == 1 ? "" : "s")</span>
+                        </div>
+                    </a>
+                </div>
+            }
+        </div>
+    }
+</div>

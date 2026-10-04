@@ -1,0 +1,11 @@
+@model IReadOnlyList<TrainerLoad>
+
+<ul class="list-unstyled ht-item-list mb-0">
+    @foreach (var t in Model)
+    {
+        <li>
+            <div class="flex-grow-1 fw-semibold">@t.FullName</div>
+            <span class="badge rounded-pill bg-primary-subtle text-primary">@t.ClientCount client@(t.ClientCount == 1 ? "" : "s")</span>
+        </li>
+    }
+</ul>

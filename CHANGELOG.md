@@ -2,9 +2,105 @@
 
 A log of every task completed on HealthTrack, newest first.
 
-## 2026-10-04 — Redesigned top bar
+## 2026-10-04 — Workout & diet management
 
 Commit: not committed yet
+
+### Added
+- **Data model** (migration `20261004054823_WorkoutAndDiet`):
+  - `ApplicationUser.TrainerId` / `Trainer`: the client's assigned trainer. Self-referencing FK with `NoAction` on delete.
+  - `WorkoutPlan`: title, description, start/end date, `IsActive`, `ClientId`, `TrainerId`, plus a list of `WorkoutExercise` (optional `Day` stored as a string; name, sets, reps, minutes, notes).
+  - `DietPlan`: same fields plus `DailyCalorieTarget`, with a list of `DietMeal` (`MealType` stored as a string; description, calories).
+  - `WorkoutLog` (date, activity, minutes, calories burned, notes), `MealLog` (date, meal type, description, calories), `HealthMeasurement` (date, weight kg, height cm, body fat %, resting heart rate, notes, plus a computed `Bmi` that isn't stored).
+  - Plan → client/trainer FKs are `NoAction`, because SQL Server rejects two cascade paths to `AspNetUsers`. Plan → items cascade, and log → client cascades.
+  - Indexes on `(ClientId, Date)` for the three log tables. Decimal precision 5,1 for weight/height and 4,1 for body fat.
+- `MealType` enum (Breakfast, Lunch, Dinner, Snack).
+- `Helpers/Dates.cs` (today, Monday-based start of week, age, Monday–Sunday order) and `Helpers/Bmi.cs` (BMI category).
+- `ApplicationDbContext.UsersInRole(role)`: an `IQueryable` filter used for the role counts and lists.
+- **Admin:** `TrainerAssignmentsController` (`/TrainerAssignments`, Admin only) lists every client with a trainer dropdown (or Unassigned) and Save button, plus a trainer panel with each trainer's client count. `Assign` checks that the user is a Client and the chosen user is a Trainer (otherwise 404/400) and logs the change.
+- **Trainer:**
+  - `ClientsController` (`/Clients`, Trainer only): a table of assigned clients with latest weight, workouts this week, active plans and last activity. `Details/{id}` shows the client's profile, workout and diet plans, last 10 measurements, workouts and meals, and "+ Workout plan" / "+ Diet plan" buttons. A client who isn't assigned to the trainer gives 404.
+  - `WorkoutPlansController` and `DietPlansController`, shared by Client and Trainer roles:
+    - `Index`: trainers see the plans they created, with a client filter; clients see plans made for them.
+    - `Details`: the plan's trainer or client can view it. Exercises are grouped by day ("Any day" first, then Monday–Sunday, with today marked); meals are grouped by type, with stat tiles for daily target, planned total and meal count.
+    - `Create`, `Edit`, `Delete`, `AddExercise`/`DeleteExercise` and `AddMeal`/`DeleteMeal` are trainer-only and limited to the trainer's own plans.
+    - Creating a plan, or moving it to a different client, is only allowed for the trainer's assigned clients. Editing keeps the current client even if they were reassigned since.
+    - End date can't be before start date. An exercise needs sets/reps or a duration. Calorie target must be 500–10,000.
+  - `PlanClients` helper: client dropdown and plan validation shared by both controllers.
+- **Client:** `WorkoutLogsController`, `MealLogsController`, `MeasurementsController` (Client only) at `/WorkoutLogs`, `/MealLogs`, `/Measurements`:
+  - Each page has an add form, a history of the latest 50 entries, and delete for the client's own entries only.
+  - Dates can't be in the future or more than a year ago.
+  - Measurements: weight 20–400 kg, height 50–260 cm, body fat 2–75 %, resting HR 25–220. Height is pre-filled from the last entry, and carried forward on save if left blank, so every entry gets a BMI. The page shows tiles for current weight, change since the previous entry, and BMI with its category.
+  - Meal history is grouped by day with daily kcal totals.
+  - `TrackingRules` helper: date validation, trimming, page size.
+- **Views:**
+  - Shared: `PlanForm` (create/edit for both plan types; the calorie target field only appears for diet plans), `_PlanList`, `_PlanHeader`, `_PlanStatus`, `_PlanLinks`, `_DeleteButton`, `_MeasurementTable`, `_ClientTable`, `_TrainerLoads`.
+  - Per controller: `WorkoutPlans/Index`, `WorkoutPlans/Details`, `DietPlans/Index`, `DietPlans/Details`, `Clients/Index`, `Clients/Details`, `TrainerAssignments/Index`, `WorkoutLogs/Index`, `MealLogs/Index`, `Measurements/Index`.
+- `wwwroot/js/site.js`: forms with `data-confirm="…"` ask for confirmation before submitting (used by every delete button).
+- View models: `PlanViewModels.cs`, `TrackingViewModels.cs` (including the generic `TrackingPageViewModel<TForm, TEntry>`), `TrainerViewModels.cs`, and `DeleteButton` / `ClientDashboardViewModel` / `TrainerDashboardViewModel` in `DashboardViewModels.cs`.
+
+### Changed
+- **Dashboards now use real data:**
+  - Client:
+    - Tiles: current weight, BMI and category (using the last known height), workouts and minutes this week (from Monday), calories eaten today against the diet plan's target.
+    - Panels: "Today's workout" from the active plan (exercises for today or any day; shows "Rest day" if none), the diet schedule, and the last 5 workouts.
+    - Quick buttons: Log workout, Log meal, Measurement. The header names the trainer.
+  - Trainer: tiles for client count, active plans and client workouts this week; the client progress table; quick "+ Workout plan" / "+ Diet plan" buttons.
+  - Admin: the trainer-assignments panel shows "x of y clients assigned", each trainer's client count, and a Manage link.
+  - Appointments panels and tiles still show empty states until the appointment system is built.
+- `DashboardController`: uses `Dates.Age`; `Client` and `Trainer` return the new view models.
+- `_StatTile` and `_EmptyState` moved from `Views/Dashboard/` to `Views/Shared/` so every page can use them. `_ProfileCard` no longer uses `h-100`; it was overflowing past the footer when stacked under another panel.
+- **Navbar:**
+  - Role-specific links: Trainer gets **Clients** and a **Plans** dropdown; Client gets **Plans** and **Track** (Workouts / Meals / Measurements) dropdowns; Admin gets **Assignments**. The current section is highlighted (`NavActiveAny`).
+  - Privacy is no longer in the navbar; it's still in the footer.
+- `DbSeeder`: seed users can set `TrainerEmail`. After the users are created, a client with no trainer yet is assigned to that trainer (startup fails if it isn't a Trainer). An existing assignment, for example one an admin changed, is left alone. `appsettings.Development.json` assigns `client@healthtrack.local` to `trainer@healthtrack.local`.
+- `_ViewImports.cshtml`: added `Microsoft.AspNetCore.Mvc.Rendering` and `Microsoft.AspNetCore.Mvc.ViewFeatures`.
+- `site.css`: new classes `.ht-form-panel`, `.ht-prewrap`, `.ht-badge-active`/`-inactive`, `.ht-group-title`, `.ht-group-meta`, `.ht-item-list`, `.ht-icon-btn`, `.ht-date-chip`, `.ht-meal-badge`, `.ht-assign-form`, plus navbar dropdown and breadcrumb colours.
+- `README.md`: ticked "Workout & diet management"; added a "Who can do what" table, a note that the seeded client is assigned to the seeded trainer, and `Helpers/` in the project structure.
+
+### Environment / verification
+- Build: succeeded with 0 warnings and 0 errors. `dotnet ef migrations add WorkoutAndDiet` was applied automatically on startup.
+- Scripted with curl on port 5299 (`wd.sh` and `sweep.sh` in the session scratchpad), signed in as the three seeded accounts:
+  - **Access:**
+    - Client → `/Clients`, `/WorkoutPlans/Create`, `Edit` or `Delete` → Access denied.
+    - Trainer → `/WorkoutLogs` and `/TrainerAssignments` → Access denied.
+    - Admin → `/WorkoutPlans` → Access denied.
+    - Signed out → Login.
+    - Trainer posting a delete for a client's log → Access denied.
+    - The client's plan page shows no edit controls.
+  - **Validation:**
+    - Empty plan / end before start → three errors.
+    - Plan for a client who isn't the trainer's → "You can only create plans for your own clients."
+    - Exercise with no sets or duration → error.
+    - Meal type `Brunch` → rejected.
+    - Calorie target 100 → range error.
+    - Future workout date → "Date can't be in the future."
+    - Weight 5 / height 400 → range errors.
+  - **Flows:**
+    - Created a workout plan with three exercises (today, any day, Friday) and a diet plan with meals.
+    - Logged workouts, meals and measurements.
+    - The client dashboard showed 67.2 kg, BMI 24.7 "Healthy weight", workouts, 970 kcal today against a 2,000 target, today's two exercises, the diet meals, and "Your trainer is Alex Morgan".
+    - The trainer saw the client's logs, measurements and plans.
+    - Admin unassigned, then reassigned, the client: while unassigned the trainer got 404 on the client page but could still open their own plan. Assigning a non-trainer → 400.
+    - Deleting a plan removed it (404 afterwards).
+  - Requested every page as each role after the fixes: all 200.
+- **Bugs found and fixed while testing:**
+  - The admin dashboard returned 500. EF Core couldn't translate `OrderBy` applied after projecting into the `TrainerLoad` record. The query now sorts before projecting.
+  - A measurement saved without height had no BMI. Height is now carried forward.
+  - The diet plan showed kcal twice when a group had one meal, and group totals were uppercased by the heading style (`.ht-group-meta` fixes this).
+  - The profile card overflowed the footer.
+- Screenshots (headless Chrome over the DevTools protocol): client dashboard, trainer workout plan page, client diet plan page, measurements, trainer client details, admin assignments, workout plan list, new-plan form, the Track dropdown at 1200px, the meal log at 420px, and the phone menu with the Track dropdown open.
+- **Cleanup:** deleted all test plans, exercises, meals, logs and measurements; the tables are empty. The seeded client→trainer assignment remains. Stopped only the port-5299 process and headless Chrome.
+
+### Notes
+- Log entries can be added and deleted but not edited.
+- When a client is reassigned, their old trainer keeps access to the plans they wrote (they own them) but can no longer see the client's page or create new plans for them.
+- Trainer feedback on client progress isn't built yet; it fits with "Progress tracking & analytics".
+- Charts/trends of weight and BMI over time are also left for "Progress tracking & analytics"; this step stores the data they will use.
+
+## 2026-10-04 — Redesigned top bar
+
+Commit: `8cf85a9`
 
 Replaces the separate Dashboard button, username text and Logout button from the previous entry, which looked cluttered.
 
@@ -38,7 +134,7 @@ Replaces the separate Dashboard button, username text and Logout button from the
 
 ## 2026-10-04 — Dashboard button in the navbar
 
-Commit: not committed yet
+Commit: `8cf85a9`
 
 ### Changed
 - `HealthTrack/Views/Shared/_LoginPartial.cshtml`:
@@ -61,7 +157,7 @@ Commit: not committed yet
 
 ## 2026-10-04 — Seed one account per role
 
-Commit: not committed yet
+Commit: `8cf85a9`
 
 ### Changed
 - `HealthTrack/appsettings.Development.json` — replaced the `SeedAdmin` section with a `SeedUsers` array (`Email`, `Password`, `FullName`, `Role`, optional `DateOfBirth` and `Gender`):
@@ -89,7 +185,7 @@ Commit: not committed yet
 
 ## 2026-10-04 — Role-based dashboards
 
-Commit: not committed yet
+Commit: `8cf85a9`
 
 ### Added
 - `HealthTrack/Controllers/DashboardController.cs` (`[Authorize]`):

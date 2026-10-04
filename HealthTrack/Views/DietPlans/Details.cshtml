@@ -1,0 +1,94 @@
+@model DietPlanDetailsViewModel
+@{
+    var plan = Model.Plan;
+    ViewData["Title"] = plan.Title;
+    var totalCalories = plan.Meals.Sum(m => m.Calories ?? 0);
+    var mealOptions = Enum.GetValues<MealType>().Select(t => new SelectListItem(t.ToString(), t.ToString()));
+}
+
+<div class="container py-4">
+    <partial name="_PlanHeader" model='new PlanHeader(plan.Id, "Diet plans", plan.Title, plan.Description,
+        plan.Client!.FullName, plan.Trainer!.FullName, plan.StartDate, plan.EndDate, plan.IsActive, Model.CanEdit)' />
+
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-4"><partial name="_StatTile" model='new StatTile("bi-bullseye", "Daily target", plan.DailyCalorieTarget is { } t ? $"{t:N0}" : "—", "kcal per day")' /></div>
+        <div class="col-6 col-md-4"><partial name="_StatTile" model='new StatTile("bi-fire", "Planned total", $"{totalCalories:N0}", "kcal across all meals")' /></div>
+        <div class="col-12 col-md-4"><partial name="_StatTile" model='new StatTile("bi-basket", "Meals", plan.Meals.Count.ToString(), "in this plan")' /></div>
+    </div>
+
+    <div class="row g-3">
+        <div class="@(Model.CanEdit ? "col-lg-8" : "col-12")">
+            <div class="ht-panel">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-egg-fried"></i> Daily meals</h2>
+                </div>
+
+                @if (plan.Meals.Count == 0)
+                {
+                    <partial name="_EmptyState" model='new EmptyState("bi-basket", Model.CanEdit ? "No meals yet. Add the first one using the form." : "Your trainer hasn’t added meals yet.")' />
+                }
+                @foreach (var group in plan.Meals.GroupBy(m => m.MealType).OrderBy(g => g.Key))
+                {
+                    var groupCalories = group.Sum(m => m.Calories ?? 0);
+                    <h3 class="ht-group-title d-flex justify-content-between">
+                        <span>@group.Key</span>
+                        @if (groupCalories > 0 && group.Count() > 1) { <span class="ht-group-meta">@groupCalories.ToString("N0") kcal</span> }
+                    </h3>
+                    <ul class="list-unstyled ht-item-list">
+                        @foreach (var meal in group.OrderBy(m => m.Id))
+                        {
+                            <li>
+                                <div class="flex-grow-1">@meal.Description</div>
+                                @if (meal.Calories is not null)
+                                {
+                                    <span class="small text-muted text-nowrap">@meal.Calories kcal</span>
+                                }
+                                @if (Model.CanEdit)
+                                {
+                                    <partial name="_DeleteButton" model='new DeleteButton("DietPlans", "DeleteMeal",
+                                        new() { ["id"] = plan.Id.ToString(), ["mealId"] = meal.Id.ToString() }, "Remove this meal?")' />
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+
+        @if (Model.CanEdit)
+        {
+            <div class="col-lg-4">
+                <div class="ht-panel">
+                    <div class="ht-panel-header">
+                        <h2 class="h6 mb-0"><i class="bi bi-plus-circle"></i> Add meal</h2>
+                    </div>
+                    <form asp-action="AddMeal" asp-route-id="@plan.Id" method="post" novalidate>
+                        <div class="mb-3">
+                            <label asp-for="NewMeal.MealType" class="form-label"></label>
+                            <select asp-for="NewMeal.MealType" asp-items="mealOptions" class="form-select"></select>
+                            <span asp-validation-for="NewMeal.MealType" class="text-danger small"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="NewMeal.Description" class="form-label"></label>
+                            <textarea asp-for="NewMeal.Description" class="form-control" rows="2" placeholder="e.g. Oats with banana and peanut butter"></textarea>
+                            <span asp-validation-for="NewMeal.Description" class="text-danger small"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="NewMeal.Calories" class="form-label"></label>
+                            <div class="input-group">
+                                <input asp-for="NewMeal.Calories" type="number" class="form-control" />
+                                <span class="input-group-text">kcal</span>
+                            </div>
+                            <span asp-validation-for="NewMeal.Calories" class="text-danger small"></span>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Add meal</button>
+                    </form>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

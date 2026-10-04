@@ -1,0 +1,30 @@
+@model IReadOnlyList<ClientSummary>
+
+<div class="table-responsive">
+    <table class="table ht-table align-middle mb-0">
+        <thead>
+            <tr>
+                <th>Client</th>
+                <th class="text-end">Weight</th>
+                <th class="text-end">Workouts <span class="d-none d-md-inline">this week</span></th>
+                <th class="text-end d-none d-md-table-cell">Active plans</th>
+                <th class="text-end d-none d-md-table-cell">Last activity</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in Model)
+            {
+                <tr>
+                    <td>
+                        <a class="fw-semibold" asp-controller="Clients" asp-action="Details" asp-route-id="@c.Id">@c.FullName</a>
+                        <div class="small text-muted text-break">@c.Email@(c.Age is { } age ? $" · {age} yrs" : "")</div>
+                    </td>
+                    <td class="text-end text-nowrap">@(c.LatestWeightKg is { } w ? $"{w:0.0} kg" : "—")</td>
+                    <td class="text-end">@c.WorkoutsThisWeek</td>
+                    <td class="text-end d-none d-md-table-cell">@c.ActivePlans</td>
+                    <td class="text-end text-nowrap small d-none d-md-table-cell">@(c.LastActivity?.ToString("d MMM") ?? "—")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

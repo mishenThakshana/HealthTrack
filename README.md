@@ -149,7 +149,17 @@ In Development, these accounts are created on startup if they don't already exis
 | Trainer | `trainer@healthtrack.local` | `Trainer@12345` | Alex Morgan |
 | Client | `client@healthtrack.local` | `Client@12345` | Jamie Silva |
 
+The seeded client is assigned to the seeded trainer, so you can sign in as the trainer and create plans for Jamie straight away.
+
 These are for local development only. Don't use them in production.
+
+## Who can do what
+
+| Role | Pages | What they can do |
+|------|-------|------------------|
+| Admin | Dashboard, Assignments | See user statistics and assign each client to a trainer |
+| Trainer | Dashboard, Clients, Plans | See assigned clients' measurements and logs; create, edit and delete workout and diet plans for them |
+| Client | Dashboard, Plans, Track | View plans from their trainer; log workouts, meals and measurements (weight, height, body fat, resting heart rate) |
 
 ## Project Structure
 
@@ -160,6 +170,7 @@ HealthTrack/
 └── HealthTrack/
     ├── Controllers/          # MVC controllers
     ├── Data/                 # DbContext, roles, startup seeding
+    ├── Helpers/              # Date and BMI helpers
     ├── Migrations/           # EF Core migrations (SQL Server)
     ├── Models/               # Domain and view models
     ├── Views/                # Razor views
@@ -177,7 +188,7 @@ HealthTrack/
 - [x] Registration and login
 - [x] Switched database from MySQL to SQL Server (Docker)
 - [x] Role-based dashboards
-- [ ] Workout & diet management
+- [x] Workout & diet management
 - [ ] Appointment system
 - [ ] Progress tracking & analytics
 - [ ] Notifications

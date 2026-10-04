@@ -1,0 +1,91 @@
+@model TrackingPageViewModel<MeasurementFormViewModel, HealthMeasurement>
+@{
+    ViewData["Title"] = "Measurements";
+    var latest = Model.Entries.FirstOrDefault();
+    var previous = Model.Entries.Skip(1).FirstOrDefault();
+    var change = latest is not null && previous is not null ? latest.WeightKg - previous.WeightKg : (decimal?)null;
+    var latestHeight = Model.Entries.FirstOrDefault(e => e.HeightCm is not null)?.HeightCm;
+    var bmi = latest is null ? null : new HealthMeasurement { WeightKg = latest.WeightKg, HeightCm = latestHeight }.Bmi;
+}
+
+<div class="container py-4">
+    <div class="ht-dash-header">
+        <div>
+            <h1 class="h3 mb-1">Measurements</h1>
+            <p class="text-muted mb-0">Track your weight, BMI and other health measurements.</p>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-4"><partial name="_StatTile" model='new StatTile("bi-speedometer2", "Current weight", latest is null ? "—" : $"{latest.WeightKg:0.0} kg", latest is null ? "No measurements yet" : $"on {latest.Date:d MMM yyyy}")' /></div>
+        <div class="col-6 col-md-4"><partial name="_StatTile" model='new StatTile("bi-arrow-down-up", "Change", change is null ? "—" : $"{change:+0.0;-0.0;0.0} kg", "since previous entry")' /></div>
+        <div class="col-12 col-md-4"><partial name="_StatTile" model='new StatTile("bi-heart-pulse", "BMI", bmi?.ToString("0.0") ?? "—", bmi is null ? "Add your height to see BMI" : HealthTrack.Helpers.Bmi.Category(bmi.Value))' /></div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-4">
+            <div class="ht-panel">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-plus-circle"></i> Add measurement</h2>
+                </div>
+                <form asp-action="Create" method="post" novalidate>
+                    <div class="mb-3">
+                        <label asp-for="Form.Date" class="form-label"></label>
+                        <input asp-for="Form.Date" type="date" class="form-control" max="@HealthTrack.Helpers.Dates.Today.ToString("yyyy-MM-dd")" />
+                        <span asp-validation-for="Form.Date" class="text-danger small"></span>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label asp-for="Form.WeightKg" class="form-label"></label>
+                            <input asp-for="Form.WeightKg" type="number" step="0.1" class="form-control" />
+                            <span asp-validation-for="Form.WeightKg" class="text-danger small"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="Form.HeightCm" class="form-label"></label>
+                            <input asp-for="Form.HeightCm" type="number" step="0.1" class="form-control" />
+                            <span asp-validation-for="Form.HeightCm" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label asp-for="Form.BodyFatPercent" class="form-label"></label>
+                            <input asp-for="Form.BodyFatPercent" type="number" step="0.1" class="form-control" />
+                            <span asp-validation-for="Form.BodyFatPercent" class="text-danger small"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="Form.RestingHeartRate" class="form-label">Resting HR (bpm)</label>
+                            <input asp-for="Form.RestingHeartRate" type="number" class="form-control" />
+                            <span asp-validation-for="Form.RestingHeartRate" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Form.Notes" class="form-label"></label>
+                        <input asp-for="Form.Notes" class="form-control" placeholder="Optional" />
+                        <span asp-validation-for="Form.Notes" class="text-danger small"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-check-lg"></i> Save measurement</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="ht-panel">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-clock-history"></i> History</h2>
+                </div>
+                @if (Model.Entries.Count == 0)
+                {
+                    <partial name="_EmptyState" model='new EmptyState("bi-rulers", "No measurements yet. Add your first one to start tracking.")' />
+                }
+                else
+                {
+                    <partial name="_MeasurementTable" model="Model.Entries" view-data='new ViewDataDictionary(ViewData) { ["CanDelete"] = true }' />
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,10 @@
+@model PlanListViewModel
+@{
+    ViewData["Title"] = "Diet plans";
+    ViewData["PlanController"] = "DietPlans";
+    ViewData["PlanNoun"] = "Diet plan";
+    ViewData["ItemNoun"] = "meal";
+    ViewData["PlanIcon"] = "bi-egg-fried";
+}
+
+<partial name="_PlanList" model="Model" view-data="ViewData" />

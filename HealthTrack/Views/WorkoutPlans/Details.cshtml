@@ -1,0 +1,122 @@
+@using HealthTrack.Helpers
+@model WorkoutPlanDetailsViewModel
+@{
+    var plan = Model.Plan;
+    ViewData["Title"] = plan.Title;
+    var groups = plan.Exercises
+        .GroupBy(e => e.Day)
+        .OrderBy(g => g.Key is null ? -1 : Array.IndexOf(Dates.WeekOrder, g.Key.Value))
+        .ToList();
+    var dayOptions = Dates.WeekOrder.Select(d => new SelectListItem(d.ToString(), d.ToString()));
+}
+
+<div class="container py-4">
+    <partial name="_PlanHeader" model='new PlanHeader(plan.Id, "Workout plans", plan.Title, plan.Description,
+        plan.Client!.FullName, plan.Trainer!.FullName, plan.StartDate, plan.EndDate, plan.IsActive, Model.CanEdit)' />
+
+    <div class="row g-3">
+        <div class="@(Model.CanEdit ? "col-lg-8" : "col-12")">
+            <div class="ht-panel">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-list-check"></i> Exercises</h2>
+                    <span class="small text-muted">@plan.Exercises.Count total</span>
+                </div>
+
+                @if (groups.Count == 0)
+                {
+                    <partial name="_EmptyState" model='new EmptyState("bi-clipboard", Model.CanEdit ? "No exercises yet. Add the first one using the form." : "Your trainer hasn’t added exercises yet.")' />
+                }
+                @foreach (var group in groups)
+                {
+                    var isToday = group.Key == DateTime.Today.DayOfWeek;
+                    <h3 class="ht-group-title">
+                        @(group.Key?.ToString() ?? "Any day")
+                        @if (isToday) { <span class="badge rounded-pill bg-primary-subtle text-primary ms-1">Today</span> }
+                    </h3>
+                    <ul class="list-unstyled ht-item-list">
+                        @foreach (var exercise in group.OrderBy(e => e.Id))
+                        {
+                            <li>
+                                <div class="flex-grow-1">
+                                    <div class="fw-semibold">@exercise.Name</div>
+                                    <div class="small text-muted d-flex flex-wrap gap-3">
+                                        @if (exercise.Sets is not null || exercise.Reps is not null)
+                                        {
+                                            <span><i class="bi bi-arrow-repeat"></i> @(exercise.Sets ?? 1) × @(exercise.Reps?.ToString() ?? "–") reps</span>
+                                        }
+                                        @if (exercise.DurationMinutes is not null)
+                                        {
+                                            <span><i class="bi bi-stopwatch"></i> @exercise.DurationMinutes min</span>
+                                        }
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(exercise.Notes))
+                                    {
+                                        <div class="small mt-1">@exercise.Notes</div>
+                                    }
+                                </div>
+                                @if (Model.CanEdit)
+                                {
+                                    <partial name="_DeleteButton" model='new DeleteButton("WorkoutPlans", "DeleteExercise",
+                                        new() { ["id"] = plan.Id.ToString(), ["exerciseId"] = exercise.Id.ToString() }, $"Remove {exercise.Name}?")' />
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+
+        @if (Model.CanEdit)
+        {
+            <div class="col-lg-4">
+                <div class="ht-panel">
+                    <div class="ht-panel-header">
+                        <h2 class="h6 mb-0"><i class="bi bi-plus-circle"></i> Add exercise</h2>
+                    </div>
+                    <form asp-action="AddExercise" asp-route-id="@plan.Id" method="post" novalidate>
+                        <div class="mb-3">
+                            <label asp-for="NewExercise.Name" class="form-label"></label>
+                            <input asp-for="NewExercise.Name" class="form-control" placeholder="e.g. Barbell squat" />
+                            <span asp-validation-for="NewExercise.Name" class="text-danger small"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="NewExercise.Day" class="form-label"></label>
+                            <select asp-for="NewExercise.Day" asp-items="dayOptions" class="form-select">
+                                <option value="">Any day</option>
+                            </select>
+                        </div>
+                        <div class="row g-2 mb-1">
+                            <div class="col-4">
+                                <label asp-for="NewExercise.Sets" class="form-label"></label>
+                                <input asp-for="NewExercise.Sets" type="number" class="form-control" />
+                            </div>
+                            <div class="col-4">
+                                <label asp-for="NewExercise.Reps" class="form-label"></label>
+                                <input asp-for="NewExercise.Reps" type="number" class="form-control" />
+                            </div>
+                            <div class="col-4">
+                                <label asp-for="NewExercise.DurationMinutes" class="form-label"></label>
+                                <input asp-for="NewExercise.DurationMinutes" type="number" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <span asp-validation-for="NewExercise.Sets" class="text-danger small d-block"></span>
+                            <span asp-validation-for="NewExercise.Reps" class="text-danger small d-block"></span>
+                            <span asp-validation-for="NewExercise.DurationMinutes" class="text-danger small d-block"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="NewExercise.Notes" class="form-label"></label>
+                            <input asp-for="NewExercise.Notes" class="form-control" placeholder="Optional, e.g. 60s rest" />
+                            <span asp-validation-for="NewExercise.Notes" class="text-danger small"></span>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Add exercise</button>
+                    </form>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

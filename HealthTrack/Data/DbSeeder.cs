@@ -7,7 +7,7 @@ namespace HealthTrack.Data;
 public static class DbSeeder
 {
     private sealed record SeedUser(
-        string Email, string Password, string FullName, string Role, DateOnly? DateOfBirth, string? Gender);
+        string Email, string Password, string FullName, string Role, DateOnly? DateOfBirth, string? Gender, string? TrainerEmail);
 
     public static async Task SeedAsync(IServiceProvider services)
     {
@@ -29,6 +29,23 @@ public static class DbSeeder
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
         foreach (var seed in seedUsers)
             await SeedUserAsync(userManager, seed);
+
+        foreach (var seed in seedUsers.Where(s => s.TrainerEmail is not null))
+            await AssignTrainerAsync(userManager, seed);
+    }
+
+    private static async Task AssignTrainerAsync(UserManager<ApplicationUser> userManager, SeedUser seed)
+    {
+        var client = await userManager.FindByEmailAsync(seed.Email);
+        if (client is null || client.TrainerId is not null)
+            return;
+
+        var trainer = await userManager.FindByEmailAsync(seed.TrainerEmail!);
+        if (trainer is null || !await userManager.IsInRoleAsync(trainer, Roles.Trainer))
+            throw new InvalidOperationException($"Seed user {seed.Email} has unknown trainer '{seed.TrainerEmail}'.");
+
+        client.TrainerId = trainer.Id;
+        await userManager.UpdateAsync(client);
     }
 
     private static async Task SeedUserAsync(UserManager<ApplicationUser> userManager, SeedUser seed)

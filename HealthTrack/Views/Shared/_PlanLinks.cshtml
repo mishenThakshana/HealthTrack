@@ -1,0 +1,27 @@
+@model IReadOnlyList<PlanListItem>
+@{
+    var controller = (string)ViewData["Controller"]!;
+    var itemNoun = (string)ViewData["ItemNoun"]!;
+}
+
+@if (Model.Count == 0)
+{
+    <partial name="_EmptyState" model='new EmptyState("bi-clipboard", (string)ViewData["Empty"]!)' />
+}
+else
+{
+    <ul class="list-unstyled ht-item-list mb-0">
+        @foreach (var plan in Model)
+        {
+            <li>
+                <div class="flex-grow-1">
+                    <a class="fw-semibold" asp-controller="@controller" asp-action="Details" asp-route-id="@plan.Id">@plan.Title</a>
+                    <div class="small text-muted">
+                        From @plan.StartDate.ToString("d MMM yyyy") · @plan.ItemCount @itemNoun@(plan.ItemCount == 1 ? "" : "s")
+                    </div>
+                </div>
+                <partial name="_PlanStatus" model="plan.IsActive" />
+            </li>
+        }
+    </ul>
+}

@@ -1,0 +1,90 @@
+@model TrackingPageViewModel<WorkoutLogFormViewModel, WorkoutLog>
+@{
+    ViewData["Title"] = "Workout log";
+}
+
+<div class="container py-4">
+    <div class="ht-dash-header">
+        <div>
+            <h1 class="h3 mb-1">Workout log</h1>
+            <p class="text-muted mb-0">Record your workouts so you and your trainer can see your progress.</p>
+        </div>
+        <a class="btn btn-outline-primary btn-sm" asp-controller="WorkoutPlans" asp-action="Index"><i class="bi bi-clipboard-check"></i> My workout plans</a>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-4">
+            <div class="ht-panel">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-plus-circle"></i> Log a workout</h2>
+                </div>
+                <form asp-action="Create" method="post" novalidate>
+                    <div class="mb-3">
+                        <label asp-for="Form.Date" class="form-label"></label>
+                        <input asp-for="Form.Date" type="date" class="form-control" max="@HealthTrack.Helpers.Dates.Today.ToString("yyyy-MM-dd")" />
+                        <span asp-validation-for="Form.Date" class="text-danger small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Form.Activity" class="form-label"></label>
+                        <input asp-for="Form.Activity" class="form-control" placeholder="e.g. Running, Leg day" />
+                        <span asp-validation-for="Form.Activity" class="text-danger small"></span>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label asp-for="Form.DurationMinutes" class="form-label">Minutes</label>
+                            <input asp-for="Form.DurationMinutes" type="number" class="form-control" />
+                            <span asp-validation-for="Form.DurationMinutes" class="text-danger small"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="Form.CaloriesBurned" class="form-label">Calories</label>
+                            <input asp-for="Form.CaloriesBurned" type="number" class="form-control" />
+                            <span asp-validation-for="Form.CaloriesBurned" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Form.Notes" class="form-label"></label>
+                        <input asp-for="Form.Notes" class="form-control" placeholder="Optional" />
+                        <span asp-validation-for="Form.Notes" class="text-danger small"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-check-lg"></i> Save workout</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="ht-panel">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-clock-history"></i> History</h2>
+                </div>
+                @if (Model.Entries.Count == 0)
+                {
+                    <partial name="_EmptyState" model='new EmptyState("bi-activity", "No workouts logged yet.")' />
+                }
+                else
+                {
+                    <ul class="list-unstyled ht-item-list mb-0">
+                        @foreach (var log in Model.Entries)
+                        {
+                            <li>
+                                <div class="ht-date-chip"><span>@log.Date.ToString("MMM")</span><strong>@log.Date.Day</strong></div>
+                                <div class="flex-grow-1">
+                                    <div class="fw-semibold">@log.Activity</div>
+                                    <div class="small text-muted d-flex flex-wrap gap-3">
+                                        <span><i class="bi bi-stopwatch"></i> @log.DurationMinutes min</span>
+                                        @if (log.CaloriesBurned is not null) { <span><i class="bi bi-fire"></i> @log.CaloriesBurned kcal</span> }
+                                        @if (!string.IsNullOrWhiteSpace(log.Notes)) { <span>@log.Notes</span> }
+                                    </div>
+                                </div>
+                                <partial name="_DeleteButton" model='new DeleteButton("WorkoutLogs", "Delete", new() { ["id"] = log.Id.ToString() }, "Delete this workout entry?")' />
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

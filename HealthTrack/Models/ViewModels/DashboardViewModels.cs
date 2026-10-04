@@ -14,6 +14,8 @@ public class AdminDashboardViewModel
     public int NewThisWeek { get; init; }
     public int LockedOut { get; init; }
     public IReadOnlyList<RecentUser> RecentUsers { get; init; } = [];
+    public int AssignedClients { get; init; }
+    public IReadOnlyList<TrainerLoad> TrainerLoads { get; init; } = [];
 }
 
 public class MemberDashboardViewModel
@@ -26,3 +28,30 @@ public class MemberDashboardViewModel
 
     public string FirstName => FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? FullName;
 }
+
+public class ClientDashboardViewModel
+{
+    public required MemberDashboardViewModel Profile { get; init; }
+    public string? TrainerName { get; init; }
+    public HealthMeasurement? LatestMeasurement { get; init; }
+    public decimal? Bmi { get; init; }
+    public int WorkoutsThisWeek { get; init; }
+    public int MinutesThisWeek { get; init; }
+    public int CaloriesToday { get; init; }
+    public WorkoutPlan? WorkoutPlan { get; init; }
+    public DietPlan? DietPlan { get; init; }
+    public IReadOnlyList<WorkoutLog> RecentWorkouts { get; init; } = [];
+
+    public IEnumerable<WorkoutExercise> TodaysExercises =>
+        WorkoutPlan?.Exercises.Where(e => e.Day is null || e.Day == DateTime.Today.DayOfWeek) ?? [];
+}
+
+public class TrainerDashboardViewModel
+{
+    public required MemberDashboardViewModel Profile { get; init; }
+    public IReadOnlyList<ClientSummary> Clients { get; init; } = [];
+    public int ActivePlans { get; init; }
+    public int ClientWorkoutsThisWeek { get; init; }
+}
+
+public record DeleteButton(string Controller, string Action, Dictionary<string, string> RouteValues, string Confirm, string? Label = null);

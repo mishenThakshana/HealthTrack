@@ -1,0 +1,125 @@
+@model ClientDetailsViewModel
+@{
+    var client = Model.Client;
+    ViewData["Title"] = client.FullName;
+    var latest = Model.Measurements.FirstOrDefault();
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><a asp-action="Index">My clients</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@client.FullName</li>
+        </ol>
+    </nav>
+
+    <div class="ht-dash-header">
+        <div>
+            <span class="badge rounded-pill bg-primary-subtle text-primary mb-2">Client</span>
+            <h1 class="h3 mb-1">@client.FullName</h1>
+            <p class="text-muted mb-0">
+                @client.Email
+                @if (Model.Age is not null) { <span> · @Model.Age yrs</span> }
+                @if (client.Gender is not null) { <span> · @client.Gender</span> }
+            </p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-primary btn-sm" asp-controller="WorkoutPlans" asp-action="Create" asp-route-clientId="@client.Id"><i class="bi bi-plus-lg"></i> Workout plan</a>
+            <a class="btn btn-primary btn-sm" asp-controller="DietPlans" asp-action="Create" asp-route-clientId="@client.Id"><i class="bi bi-plus-lg"></i> Diet plan</a>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="ht-panel h-100">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-activity"></i> Workout plans</h2>
+                </div>
+                <partial name="_PlanLinks" model="Model.WorkoutPlans" view-data='new ViewDataDictionary(ViewData) { ["Controller"] = "WorkoutPlans", ["ItemNoun"] = "exercise", ["Empty"] = "No workout plans yet." }' />
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="ht-panel h-100">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-egg-fried"></i> Diet plans</h2>
+                </div>
+                <partial name="_PlanLinks" model="Model.DietPlans" view-data='new ViewDataDictionary(ViewData) { ["Controller"] = "DietPlans", ["ItemNoun"] = "meal", ["Empty"] = "No diet plans yet." }' />
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="ht-panel">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-rulers"></i> Measurements</h2>
+                    @if (latest?.Bmi is { } bmi)
+                    {
+                        <span class="small text-muted">Latest BMI @bmi.ToString("0.0") · @HealthTrack.Helpers.Bmi.Category(bmi)</span>
+                    }
+                </div>
+                @if (Model.Measurements.Count == 0)
+                {
+                    <partial name="_EmptyState" model='new EmptyState("bi-rulers", "No measurements recorded yet.")' />
+                }
+                else
+                {
+                    <partial name="_MeasurementTable" model="Model.Measurements" />
+                }
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="ht-panel h-100">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-clock-history"></i> Recent workouts</h2>
+                </div>
+                @if (Model.WorkoutLogs.Count == 0)
+                {
+                    <partial name="_EmptyState" model='new EmptyState("bi-activity", "No workouts logged yet.")' />
+                }
+                else
+                {
+                    <ul class="list-unstyled ht-item-list mb-0">
+                        @foreach (var log in Model.WorkoutLogs)
+                        {
+                            <li>
+                                <div class="ht-date-chip"><span>@log.Date.ToString("MMM")</span><strong>@log.Date.Day</strong></div>
+                                <div class="flex-grow-1">
+                                    <div class="fw-semibold">@log.Activity</div>
+                                    <div class="small text-muted">
+                                        @log.DurationMinutes min@(log.CaloriesBurned is { } kcal ? $" · {kcal} kcal" : "")@(string.IsNullOrWhiteSpace(log.Notes) ? "" : $" · {log.Notes}")
+                                    </div>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="ht-panel h-100">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-egg-fried"></i> Recent meals</h2>
+                </div>
+                @if (Model.MealLogs.Count == 0)
+                {
+                    <partial name="_EmptyState" model='new EmptyState("bi-egg-fried", "No meals logged yet.")' />
+                }
+                else
+                {
+                    <ul class="list-unstyled ht-item-list mb-0">
+                        @foreach (var meal in Model.MealLogs)
+                        {
+                            <li>
+                                <div class="ht-date-chip"><span>@meal.Date.ToString("MMM")</span><strong>@meal.Date.Day</strong></div>
+                                <div class="flex-grow-1">
+                                    <div class="fw-semibold">@meal.MealType</div>
+                                    <div class="small text-muted">@meal.Description@(meal.Calories is { } kcal ? $" · {kcal} kcal" : "")</div>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+</div>

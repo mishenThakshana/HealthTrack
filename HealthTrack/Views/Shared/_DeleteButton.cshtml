@@ -1,0 +1,9 @@
+@model HealthTrack.Models.ViewModels.DeleteButton
+
+<form asp-controller="@Model.Controller" asp-action="@Model.Action" asp-all-route-data="@Model.RouteValues" method="post" class="d-inline"
+      data-confirm="@Model.Confirm">
+    <button type="submit" class="btn btn-sm @(Model.Label is null ? "btn-link text-danger p-0 ht-icon-btn" : "btn-outline-danger")"
+            title="@(Model.Label ?? "Delete")" aria-label="@(Model.Label ?? "Delete")">
+        <i class="bi bi-trash3"></i>@if (Model.Label is not null) { <span class="ms-1">@Model.Label</span> }
+    </button>
+</form>

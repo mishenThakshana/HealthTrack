@@ -2,3 +2,10 @@
 // for details on configuring this project to bundle and minify static web assets.
 
 // Write your JavaScript code.
+
+document.addEventListener('submit', event => {
+    const message = event.target.dataset?.confirm;
+    if (message && !confirm(message)) {
+        event.preventDefault();
+    }
+});

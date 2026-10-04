@@ -1,0 +1,24 @@
+@model List<ClientSummary>
+@{
+    ViewData["Title"] = "My clients";
+}
+
+<div class="container py-4">
+    <div class="ht-dash-header">
+        <div>
+            <h1 class="h3 mb-1">My clients</h1>
+            <p class="text-muted mb-0">Clients assigned to you, with their latest progress.</p>
+        </div>
+    </div>
+
+    <div class="ht-panel">
+        @if (Model.Count == 0)
+        {
+            <partial name="_EmptyState" model='new EmptyState("bi-people", "No clients are assigned to you yet. An administrator assigns clients to trainers.")' />
+        }
+        else
+        {
+            <partial name="_ClientTable" model="Model" />
+        }
+    </div>
+</div>

@@ -1,0 +1,10 @@
+@model PlanListViewModel
+@{
+    ViewData["Title"] = "Workout plans";
+    ViewData["PlanController"] = "WorkoutPlans";
+    ViewData["PlanNoun"] = "Workout plan";
+    ViewData["ItemNoun"] = "exercise";
+    ViewData["PlanIcon"] = "bi-activity";
+}
+
+<partial name="_PlanList" model="Model" view-data="ViewData" />

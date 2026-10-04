@@ -14,4 +14,7 @@ public class ApplicationUser : IdentityUser
     public string? Gender { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public string? TrainerId { get; set; }
+    public ApplicationUser? Trainer { get; set; }
 }

@@ -63,8 +63,19 @@
             <div class="ht-panel h-100">
                 <div class="ht-panel-header">
                     <h2 class="h6 mb-0"><i class="bi bi-diagram-3"></i> Trainer assignments</h2>
+                    <a class="small" asp-controller="TrainerAssignments" asp-action="Index">Manage <i class="bi bi-chevron-right"></i></a>
                 </div>
-                <partial name="_EmptyState" model='new EmptyState("bi-link-45deg", "No clients have been assigned to trainers yet.")' />
+                <p class="small text-muted">
+                    @Model.AssignedClients of @Model.Clients client@(Model.Clients == 1 ? "" : "s") assigned to a trainer.
+                </p>
+                @if (Model.TrainerLoads.Count == 0)
+                {
+                    <partial name="_EmptyState" model='new EmptyState("bi-person-workspace", "No trainers have registered yet.")' />
+                }
+                else
+                {
+                    <partial name="_TrainerLoads" model="Model.TrainerLoads" />
+                }
             </div>
         </div>
     </div>
