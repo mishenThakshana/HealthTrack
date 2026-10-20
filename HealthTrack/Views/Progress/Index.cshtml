@@ -1,0 +1,184 @@
+@model ProgressViewModel
+@using HealthTrack.Helpers
+@{
+    var client = Model.Client;
+    ViewData["Title"] = Model.IsOwn ? "My progress" : $"{client.FullName}'s progress";
+    var routeId = Model.IsOwn ? null : client.Id;
+    var isTrainer = User.IsInRole(HealthTrack.Data.Roles.Trainer);
+    var chart = (string empty) => new ViewDataDictionary(ViewData) { ["Empty"] = empty };
+}
+
+<div class="container py-4">
+    @if (!Model.IsOwn)
+    {
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb small">
+                @if (isTrainer)
+                {
+                    <li class="breadcrumb-item"><a asp-controller="Clients" asp-action="Index">My clients</a></li>
+                    <li class="breadcrumb-item"><a asp-controller="Clients" asp-action="Details" asp-route-id="@client.Id">@client.FullName</a></li>
+                }
+                else
+                {
+                    <li class="breadcrumb-item"><a asp-controller="Appointments" asp-action="Index">Appointments</a></li>
+                    <li class="breadcrumb-item">@client.FullName</li>
+                }
+                <li class="breadcrumb-item active" aria-current="page">Progress</li>
+            </ol>
+        </nav>
+    }
+
+    <div class="ht-dash-header">
+        <div>
+            <h1 class="h3 mb-1">@ViewData["Title"]</h1>
+            <p class="text-muted mb-0">
+                @Periods.Label(Model.Days) · active on @Model.ActiveDays of @Model.Days days
+            </p>
+        </div>
+        <div class="btn-group btn-group-sm ht-range" role="group" aria-label="Time range">
+            @foreach (var range in Periods.Ranges)
+            {
+                <a class="btn @(range == Model.Days ? "btn-primary" : "btn-outline-primary")" asp-action="Index" asp-route-id="@routeId" asp-route-days="@range"
+                   aria-current="@(range == Model.Days ? "true" : null)">@(range switch { 365 => "12 months", 180 => "6 months", _ => $"{range} days" })</a>
+            }
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-speedometer2", "Weight", Model.CurrentWeight is { } w ? $"{w:0.0} kg" : "—", Model.WeightChange is { } c ? $"{c:+0.0;-0.0;0.0} kg in this period" : "No change to compare yet")' /></div>
+        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-heart-pulse", "BMI", Model.Bmi?.ToString("0.0") ?? "—", Model.Bmi is { } b ? Bmi.Category(b) : "Needs weight and height")' /></div>
+        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-activity", "Workouts", Model.Workouts.ToString(), $"{Model.WorkoutMinutes:N0} min · {Model.CaloriesBurned:N0} kcal burned")' /></div>
+        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-fire", "Avg calories eaten", Model.AverageCaloriesEaten?.ToString("N0") ?? "—", Model.CalorieTarget is { } t ? $"per logged day · target {t:N0}" : "per logged day")' /></div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+            <div class="ht-panel h-100">
+                <div class="ht-panel-header"><h2 class="h6 mb-0"><i class="bi bi-speedometer2"></i> Weight</h2></div>
+                <partial name="_Chart" model="Model.Weight" view-data='chart(Model.IsOwn ? "Add measurements to see your weight trend." : "No measurements in this period.")' />
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="ht-panel h-100">
+                <div class="ht-panel-header"><h2 class="h6 mb-0"><i class="bi bi-heart-pulse"></i> BMI</h2></div>
+                <partial name="_Chart" model="Model.BmiTrend" view-data='chart("BMI needs a weight and a height measurement.")' />
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="ht-panel h-100">
+                <div class="ht-panel-header"><h2 class="h6 mb-0"><i class="bi bi-stopwatch"></i> Workout minutes</h2></div>
+                <partial name="_Chart" model="Model.Minutes" view-data='chart("No workouts logged in this period.")' />
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="ht-panel h-100">
+                <div class="ht-panel-header"><h2 class="h6 mb-0"><i class="bi bi-lightning-charge"></i> Calories burned</h2></div>
+                <partial name="_Chart" model="Model.Burned" view-data='chart("No calories burned recorded in this period.")' />
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="ht-panel h-100">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-egg-fried"></i> Calories eaten</h2>
+                    @if (Model.CalorieTarget is { } target) { <span class="small text-muted">Dashed line: target @target.ToString("N0") kcal</span> }
+                </div>
+                <partial name="_Chart" model="Model.Eaten" view-data='chart("No meals with calories logged in this period.")' />
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="ht-panel h-100">
+                <div class="ht-panel-header"><h2 class="h6 mb-0"><i class="bi bi-trophy"></i> Top activities</h2></div>
+                @if (Model.TopActivities.Count == 0)
+                {
+                    <partial name="_EmptyState" model='new EmptyState("bi-activity", "No workouts logged in this period.")' />
+                }
+                else
+                {
+                    var most = Model.TopActivities.Max(a => a.Sessions);
+                    <ul class="list-unstyled ht-item-list mb-0">
+                        @foreach (var a in Model.TopActivities)
+                        {
+                            <li>
+                                <div class="flex-grow-1 ht-min-w-0">
+                                    <div class="d-flex justify-content-between gap-2">
+                                        <span class="fw-semibold text-truncate">@a.Activity</span>
+                                        <span class="small text-muted text-nowrap">@a.Sessions session@(a.Sessions == 1 ? "" : "s") · @a.Minutes min</span>
+                                    </div>
+                                    <div class="ht-meter" aria-hidden="true"><span style="width: @(a.Sessions * 100 / most)%"></span></div>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+        @if (Model.BodyFat.HasData)
+        {
+            <div class="col-lg-6">
+                <div class="ht-panel h-100">
+                    <div class="ht-panel-header"><h2 class="h6 mb-0"><i class="bi bi-percent"></i> Body fat</h2></div>
+                    <partial name="_Chart" model="Model.BodyFat" />
+                </div>
+            </div>
+        }
+        @if (Model.HeartRate.HasData)
+        {
+            <div class="col-lg-6">
+                <div class="ht-panel h-100">
+                    <div class="ht-panel-header"><h2 class="h6 mb-0"><i class="bi bi-heart"></i> Resting heart rate</h2></div>
+                    <partial name="_Chart" model="Model.HeartRate" />
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="ht-panel" id="feedback">
+        <div class="ht-panel-header">
+            <h2 class="h6 mb-0"><i class="bi bi-chat-left-text"></i> @(Model.IsOwn ? "Feedback from your trainer and health professionals" : "Feedback")</h2>
+        </div>
+        <div class="row g-4">
+            @if (Model.CanGiveFeedback)
+            {
+                <div class="col-lg-5">
+                    <form asp-action="AddFeedback" asp-route-id="@client.Id" asp-route-days="@Model.Days" asp-fragment="feedback" method="post" novalidate>
+                        <label asp-for="FeedbackForm.Message" class="form-label"></label>
+                        <textarea asp-for="FeedbackForm.Message" class="form-control mb-1" rows="4" placeholder="e.g. Great consistency this month — try adding one more cardio session per week."></textarea>
+                        <span asp-validation-for="FeedbackForm.Message" class="text-danger small d-block"></span>
+                        <button type="submit" class="btn btn-primary mt-2"><i class="bi bi-send"></i> Share feedback</button>
+                    </form>
+                </div>
+            }
+            <div class="@(Model.CanGiveFeedback ? "col-lg-7" : "col-12")">
+                @if (Model.Feedback.Count == 0)
+                {
+                    <partial name="_EmptyState" model='new EmptyState("bi-chat-left", Model.IsOwn ? "No feedback yet. Your trainer can leave notes on your progress here." : "No feedback yet.")' />
+                }
+                else
+                {
+                    <ul class="list-unstyled ht-item-list mb-0">
+                        @foreach (var f in Model.Feedback)
+                        {
+                            <li class="align-items-start">
+                                <div class="flex-grow-1 ht-min-w-0">
+                                    <div class="small text-muted mb-1">
+                                        <span class="fw-semibold text-body">@f.AuthorName</span> · @f.AuthorRole · @f.CreatedAt.ToLocalTime().ToString("d MMM yyyy, HH:mm")
+                                    </div>
+                                    <div class="ht-prewrap">@f.Message</div>
+                                </div>
+                                @if (f.AuthorId == Model.CurrentUserId)
+                                {
+                                    <partial name="_DeleteButton" model='new DeleteButton("Progress", "DeleteFeedback", new() { ["feedbackId"] = f.Id.ToString(), ["days"] = Model.Days.ToString() }, "Delete this feedback?")' />
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ChartScripts" />
+    <partial name="_ValidationScriptsPartial" />
+}

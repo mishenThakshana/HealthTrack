@@ -21,12 +21,18 @@
                     @foreach (var role in AccountController.RegisterableRoles)
                     {
                         var id = $"role-{role.ToLowerInvariant()}";
-                        <div class="col-6">
+                        var (icon, hint) = role switch
+                        {
+                            HealthTrack.Data.Roles.Trainer => ("bi-person-badge", "Coach and manage clients"),
+                            HealthTrack.Data.Roles.Professional => ("bi-hospital", "Offer health consultations"),
+                            _ => ("bi-person-heart", "Track my own health")
+                        };
+                        <div class="col-sm-4">
                             <input type="radio" class="btn-check" asp-for="Role" value="@role" id="@id" />
-                            <label class="ht-role-option w-100" for="@id">
-                                <i class="bi @(role == HealthTrack.Data.Roles.Trainer ? "bi-person-badge" : "bi-person-heart")"></i>
-                                <span class="fw-semibold">@role</span>
-                                <small class="text-muted">@(role == HealthTrack.Data.Roles.Trainer ? "Coach and manage clients" : "Track my own health")</small>
+                            <label class="ht-role-option w-100 h-100" for="@id">
+                                <i class="bi @icon"></i>
+                                <span class="fw-semibold">@HealthTrack.Data.Roles.DisplayName(role)</span>
+                                <small class="text-muted">@hint</small>
                             </label>
                         </div>
                     }

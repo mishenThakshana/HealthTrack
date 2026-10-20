@@ -1,0 +1,39 @@
+@model ChartData
+@{
+    var empty = ViewData["Empty"] as string ?? "Not enough data for this period yet.";
+}
+
+@if (!Model.HasData)
+{
+    <partial name="_EmptyState" model='new EmptyState("bi-graph-up", empty)' />
+}
+else
+{
+    <div class="ht-chart">
+        <canvas data-chart="chart-@Model.Id" role="img" aria-label="@(Model.YTitle ?? "Chart")"></canvas>
+    </div>
+    <script type="application/json" id="chart-@Model.Id">@Json.Serialize(Model)</script>
+    <details class="ht-chart-data">
+        <summary>Show data</summary>
+        <div class="table-responsive">
+            <table class="table table-sm ht-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Period</th>
+                        @foreach (var s in Model.Series) { <th class="text-end">@s.Label</th> }
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < Model.Labels.Count; i++)
+                    {
+                        if (Model.Series.All(s => s.Values[i] is null or 0)) { continue; }
+                        <tr>
+                            <td>@Model.Labels[i]</td>
+                            @foreach (var s in Model.Series) { <td class="text-end">@(s.Values[i]?.ToString("0.#") ?? "—")</td> }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </details>
+}

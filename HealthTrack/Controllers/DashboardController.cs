@@ -16,6 +16,7 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
     {
         if (User.IsInRole(Roles.Admin)) return RedirectToAction(nameof(Admin));
         if (User.IsInRole(Roles.Trainer)) return RedirectToAction(nameof(Trainer));
+        if (User.IsInRole(Roles.Professional)) return RedirectToAction(nameof(Professional));
         if (User.IsInRole(Roles.Client)) return RedirectToAction(nameof(Client));
         return RedirectToAction("AccessDenied", "Account");
     }
@@ -60,7 +61,11 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
             UpcomingAppointments = await db.Appointments.Include(a => a.Trainer)
                 .Where(a => a.ClientId == user.Id && a.StartsAt > now
                     && (a.Status == AppointmentStatus.Pending || a.Status == AppointmentStatus.Approved))
-                .OrderBy(a => a.StartsAt).Take(3).ToListAsync()
+                .OrderBy(a => a.StartsAt).Take(3).ToListAsync(),
+            LatestFeedback = await db.ProgressFeedback.Where(f => f.ClientId == user.Id)
+                .OrderByDescending(f => f.CreatedAt).Take(2)
+                .Select(f => new FeedbackItem(f.Id, f.AuthorId, f.Author!.FullName, "", f.Message, f.CreatedAt))
+                .ToListAsync()
         });
     }
 
@@ -95,6 +100,35 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
         });
     }
 
+    [Authorize(Roles = Roles.Professional)]
+    public async Task<IActionResult> Professional()
+    {
+        var user = await userManager.GetUserAsync(User);
+        if (user is null)
+            return Challenge();
+
+        var now = DateTime.Now;
+        var tomorrow = DateTime.Today.AddDays(1);
+        var monthStart = new DateTime(now.Year, now.Month, 1);
+        var mine = db.Appointments.Include(a => a.Client).Where(a => a.TrainerId == user.Id);
+
+        return View(new ProfessionalDashboardViewModel
+        {
+            Profile = ToProfile(user),
+            TodaysAppointments = await mine
+                .Where(a => (a.Status == AppointmentStatus.Approved || a.Status == AppointmentStatus.Completed)
+                    && a.StartsAt >= DateTime.Today && a.StartsAt < tomorrow)
+                .OrderBy(a => a.StartsAt).ToListAsync(),
+            AppointmentRequests = await mine.Where(a => a.Status == AppointmentStatus.Pending && a.StartsAt > now)
+                .OrderBy(a => a.StartsAt).Take(5).ToListAsync(),
+            Upcoming = await mine.Where(a => a.Status == AppointmentStatus.Approved && a.StartsAt >= tomorrow)
+                .OrderBy(a => a.StartsAt).Take(5).ToListAsync(),
+            PendingCount = await mine.CountAsync(a => a.Status == AppointmentStatus.Pending && a.StartsAt > now),
+            CompletedThisMonth = await mine.CountAsync(a => a.Status == AppointmentStatus.Completed && a.StartsAt >= monthStart),
+            ClientsSeen = await mine.Where(a => a.Status == AppointmentStatus.Completed).Select(a => a.ClientId).Distinct().CountAsync()
+        });
+    }
+
     [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> Admin()
     {
@@ -118,14 +152,50 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
                  join r in db.Roles on ur.RoleId equals r.Id
                  where ur.UserId == u.Id
                  select r.Name).FirstOrDefault() ?? "None",
-                u.CreatedAt))
+                u.CreatedAt,
+                u.LastLoginAt))
             .ToListAsync();
+
+        var usageFrom = Dates.Today.AddDays(-13);
+        var usageStart = usageFrom.ToDateTime(TimeOnly.MinValue).ToUniversalTime();
+        var usageDays = Enumerable.Range(0, 14).Select(i => usageFrom.AddDays(i)).ToList();
+
+        async Task<ChartSeries> UsageAsync(string label, IQueryable<DateTime> created)
+        {
+            var dates = await created.Where(c => c >= usageStart).ToListAsync();
+            var perDay = dates.GroupBy(c => DateOnly.FromDateTime(c.ToLocalTime())).ToDictionary(g => g.Key, g => g.Count());
+            return new ChartSeries(label, usageDays.Select(d => (decimal?)perDay.GetValueOrDefault(d)).ToList(), "bar");
+        }
+
+        var usage = new ChartData("usage", usageDays.Select(d => d.ToString("d MMM")).ToList(),
+        [
+            await UsageAsync("Workouts", db.WorkoutLogs.Select(l => l.CreatedAt)),
+            await UsageAsync("Meals", db.MealLogs.Select(l => l.CreatedAt)),
+            await UsageAsync("Measurements", db.HealthMeasurements.Select(m => m.CreatedAt)),
+            await UsageAsync("Appointments", db.Appointments.Select(a => a.CreatedAt))
+        ], "entries per day", Stacked: true);
+
+        var usageTotals = new List<UsageTotal>
+        {
+            new("bi-activity", "Workouts logged", await db.WorkoutLogs.CountAsync(), await db.WorkoutLogs.CountAsync(l => l.CreatedAt >= weekAgo)),
+            new("bi-egg-fried", "Meals logged", await db.MealLogs.CountAsync(), await db.MealLogs.CountAsync(l => l.CreatedAt >= weekAgo)),
+            new("bi-rulers", "Measurements", await db.HealthMeasurements.CountAsync(), await db.HealthMeasurements.CountAsync(m => m.CreatedAt >= weekAgo)),
+            new("bi-clipboard-check", "Plans created",
+                await db.WorkoutPlans.CountAsync() + await db.DietPlans.CountAsync(),
+                await db.WorkoutPlans.CountAsync(p => p.CreatedAt >= weekAgo) + await db.DietPlans.CountAsync(p => p.CreatedAt >= weekAgo)),
+            new("bi-calendar-check", "Appointments booked", await db.Appointments.CountAsync(), await db.Appointments.CountAsync(a => a.CreatedAt >= weekAgo)),
+            new("bi-chat-left-text", "Feedback given", await db.ProgressFeedback.CountAsync(), await db.ProgressFeedback.CountAsync(f => f.CreatedAt >= weekAgo))
+        };
 
         return View(new AdminDashboardViewModel
         {
             TotalUsers = await db.Users.CountAsync(),
             Clients = roleCounts.GetValueOrDefault(Roles.Client),
             Trainers = roleCounts.GetValueOrDefault(Roles.Trainer),
+            Professionals = roleCounts.GetValueOrDefault(Roles.Professional),
+            ActiveThisWeek = await db.Users.CountAsync(u => u.LastLoginAt >= weekAgo),
+            Usage = usage,
+            UsageTotals = usageTotals,
             NewThisWeek = await db.Users.CountAsync(u => u.CreatedAt >= weekAgo),
             LockedOut = await db.Users.CountAsync(u => u.LockoutEnd != null && u.LockoutEnd > now),
             RecentUsers = recentUsers,

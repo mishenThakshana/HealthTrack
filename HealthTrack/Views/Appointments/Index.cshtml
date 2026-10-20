@@ -1,7 +1,7 @@
 @model AppointmentsPageViewModel
 @{
     ViewData["Title"] = "Appointments";
-    var list = new ViewDataDictionary(ViewData) { ["IsTrainer"] = Model.IsTrainer };
+    var list = new ViewDataDictionary(ViewData) { ["IsProvider"] = Model.IsProvider };
 }
 
 <div class="container py-4">
@@ -9,13 +9,13 @@
         <div>
             <h1 class="h3 mb-1">Appointments</h1>
             <p class="text-muted mb-0">
-                @(Model.IsTrainer ? "Review consultation requests and manage your schedule." : "Book a consultation and keep track of your sessions.")
+                @(Model.IsProvider ? "Review consultation requests and manage your schedule." : "Book a consultation and keep track of your sessions.")
             </p>
         </div>
     </div>
 
     <div class="row g-3">
-        @if (!Model.IsTrainer)
+        @if (!Model.IsProvider)
         {
             <div class="col-lg-4">
                 <div class="ht-panel">
@@ -24,7 +24,7 @@
                     </div>
                     @if (!Model.Trainers.Any())
                     {
-                        <partial name="_EmptyState" model='new EmptyState("bi-person-badge", "There are no trainers to book with yet.")' />
+                        <partial name="_EmptyState" model='new EmptyState("bi-person-badge", "There are no trainers or health professionals to book with yet.")' />
                     }
                     else
                     {
@@ -32,7 +32,7 @@
                             <div class="mb-3">
                                 <label asp-for="Form.TrainerId" class="form-label"></label>
                                 <select asp-for="Form.TrainerId" asp-items="Model.Trainers" class="form-select">
-                                    <option value="">Choose a trainer</option>
+                                    <option value="">Choose who to see</option>
                                 </select>
                                 <span asp-validation-for="Form.TrainerId" class="text-danger small"></span>
                             </div>
@@ -49,14 +49,14 @@
             </div>
         }
 
-        <div class="@(Model.IsTrainer ? "col-12" : "col-lg-8")">
+        <div class="@(Model.IsProvider ? "col-12" : "col-lg-8")">
             <div class="ht-panel mb-3">
                 <div class="ht-panel-header">
-                    <h2 class="h6 mb-0"><i class="bi bi-inbox"></i> @(Model.IsTrainer ? "Requests to review" : "Awaiting approval")</h2>
+                    <h2 class="h6 mb-0"><i class="bi bi-inbox"></i> @(Model.IsProvider ? "Requests to review" : "Awaiting approval")</h2>
                     @if (Model.Requests.Count > 0) { <span class="badge rounded-pill ht-badge-pending">@Model.Requests.Count</span> }
                 </div>
                 <partial name="_AppointmentList" model="Model.Requests"
-                         view-data='new ViewDataDictionary(list) { ["EmptyIcon"] = "bi-inbox", ["Empty"] = Model.IsTrainer ? "No requests to review." : "No requests waiting for a reply." }' />
+                         view-data='new ViewDataDictionary(list) { ["EmptyIcon"] = "bi-inbox", ["Empty"] = Model.IsProvider ? "No requests to review." : "No requests waiting for a reply." }' />
             </div>
 
             <div class="ht-panel mb-3">

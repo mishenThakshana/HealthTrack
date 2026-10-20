@@ -12,7 +12,7 @@
         .Split(' ', StringSplitOptions.RemoveEmptyEntries)
         .Take(2)
         .Select(part => char.ToUpperInvariant(part[0])));
-    var role = Roles.All.FirstOrDefault(User.IsInRole) ?? "Member";
+    var role = Roles.All.FirstOrDefault(User.IsInRole) is { } r ? Roles.DisplayName(r) : "Member";
 
     <div class="dropdown ms-auto order-lg-last">
         <button class="ht-user-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">

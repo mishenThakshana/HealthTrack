@@ -1,6 +1,7 @@
 @model IReadOnlyList<HealthMeasurement>
 @{
-    var canDelete = ViewData["CanDelete"] is true;
+    var canManage = ViewData["CanManage"] is true;
+    var editingId = ViewData["EditingId"] as int?;
 }
 
 <div class="table-responsive">
@@ -12,13 +13,13 @@
                 <th class="text-end">BMI</th>
                 <th class="text-end d-none d-sm-table-cell">Body fat</th>
                 <th class="text-end d-none d-sm-table-cell">Resting HR</th>
-                @if (canDelete) { <th><span class="visually-hidden">Actions</span></th> }
+                @if (canManage) { <th><span class="visually-hidden">Actions</span></th> }
             </tr>
         </thead>
         <tbody>
             @foreach (var m in Model)
             {
-                <tr>
+                <tr class="@(m.Id == editingId ? "ht-editing" : null)">
                     <td class="text-nowrap">
                         @m.Date.ToString("d MMM yyyy")
                         @if (!string.IsNullOrWhiteSpace(m.Notes)) { <div class="small text-muted">@m.Notes</div> }
@@ -27,9 +28,10 @@
                     <td class="text-end">@(m.Bmi?.ToString("0.0") ?? "—")</td>
                     <td class="text-end d-none d-sm-table-cell">@(m.BodyFatPercent is { } bf ? $"{bf:0.0}%" : "—")</td>
                     <td class="text-end d-none d-sm-table-cell">@(m.RestingHeartRate is { } hr ? $"{hr} bpm" : "—")</td>
-                    @if (canDelete)
+                    @if (canManage)
                     {
-                        <td class="text-end">
+                        <td class="text-end text-nowrap">
+                            <partial name="_EditLink" model="m.Id" />
                             <partial name="_DeleteButton" model='new DeleteButton("Measurements", "Delete", new() { ["id"] = m.Id.ToString() }, "Delete this measurement?")' />
                         </td>
                     }

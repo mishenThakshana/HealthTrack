@@ -11,16 +11,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HealthTrack.Controllers;
 
-[Authorize(Roles = Roles.Client + "," + Roles.Trainer)]
+[Authorize(Roles = Roles.Client + "," + Roles.Providers)]
 public class AppointmentsController(ApplicationDbContext db, UserManager<ApplicationUser> userManager) : Controller
 {
     private string UserId => userManager.GetUserId(User)!;
-    private bool IsTrainer => User.IsInRole(Roles.Trainer);
+    private bool IsProvider => User.IsInRole(Roles.Trainer) || User.IsInRole(Roles.Professional);
 
     public async Task<IActionResult> Index()
     {
         var form = new AppointmentRequestViewModel();
-        if (!IsTrainer)
+        if (!IsProvider)
             form.TrainerId = await db.Users.Where(u => u.Id == UserId).Select(u => u.TrainerId).FirstOrDefaultAsync() ?? string.Empty;
 
         return View(await BuildPageAsync(form));
@@ -32,16 +32,16 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         if (appointment is null)
             return NotFound();
 
-        return View(new AppointmentDetailsViewModel { Appointment = appointment, IsTrainer = IsTrainer });
+        return View(new AppointmentDetailsViewModel { Appointment = appointment, IsProvider = IsProvider });
     }
 
     [HttpPost, Authorize(Roles = Roles.Client), ValidateAntiForgeryToken]
     public async Task<IActionResult> Create([Bind(Prefix = "Form")] AppointmentRequestViewModel form)
     {
-        var trainerName = await db.UsersInRole(Roles.Trainer)
+        var trainerName = await Providers()
             .Where(u => u.Id == form.TrainerId).Select(u => u.FullName).FirstOrDefaultAsync();
         if (!string.IsNullOrEmpty(form.TrainerId) && trainerName is null)
-            ModelState.AddModelError("Form.TrainerId", "Please choose a trainer.");
+            ModelState.AddModelError("Form.TrainerId", "Please choose who you'd like to see.");
 
         ValidateSlot(ModelState, "Form", form);
         if (ModelState.IsValid)
@@ -70,7 +70,7 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         return RedirectToAction(nameof(Index));
     }
 
-    [HttpPost, Authorize(Roles = Roles.Trainer), ValidateAntiForgeryToken]
+    [HttpPost, Authorize(Roles = Roles.Providers), ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(int id, string? returnUrl)
     {
         var appointment = await FindOwnAsync(id);
@@ -90,7 +90,7 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         return BackTo(returnUrl, id);
     }
 
-    [HttpPost, Authorize(Roles = Roles.Trainer), ValidateAntiForgeryToken]
+    [HttpPost, Authorize(Roles = Roles.Providers), ValidateAntiForgeryToken]
     public async Task<IActionResult> Decline(int id, string? note, string? returnUrl)
     {
         var appointment = await FindOwnAsync(id);
@@ -109,12 +109,12 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
     public async Task<IActionResult> Cancel(int id, string? note)
     {
         var appointment = await FindOwnAsync(id);
-        if (appointment is null || !AppointmentRules.CanCancel(appointment, IsTrainer))
+        if (appointment is null || !AppointmentRules.CanCancel(appointment, IsProvider))
             return NotFound();
 
         SetStatus(appointment, AppointmentStatus.Cancelled);
-        appointment.CancelledByClient = !IsTrainer;
-        if (IsTrainer)
+        appointment.CancelledByClient = !IsProvider;
+        if (IsProvider)
             appointment.TrainerNote = TrackingRules.Clean(note) ?? appointment.TrainerNote;
         await db.SaveChangesAsync();
 
@@ -122,7 +122,7 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         return RedirectToAction(nameof(Details), new { id });
     }
 
-    [HttpPost, Authorize(Roles = Roles.Trainer), ValidateAntiForgeryToken]
+    [HttpPost, Authorize(Roles = Roles.Providers), ValidateAntiForgeryToken]
     public async Task<IActionResult> Complete(int id, string? returnUrl)
     {
         var appointment = await FindOwnAsync(id);
@@ -136,7 +136,7 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         return BackTo(returnUrl, id);
     }
 
-    [Authorize(Roles = Roles.Trainer)]
+    [Authorize(Roles = Roles.Providers)]
     public async Task<IActionResult> Edit(int id)
     {
         var appointment = await FindOwnAsync(id);
@@ -158,7 +158,7 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         });
     }
 
-    [HttpPost, Authorize(Roles = Roles.Trainer), ValidateAntiForgeryToken]
+    [HttpPost, Authorize(Roles = Roles.Providers), ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(int id, [Bind(Prefix = "Form")] AppointmentEditViewModel form)
     {
         var appointment = await FindOwnAsync(id);
@@ -225,11 +225,29 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         appointment.UpdatedAt = DateTime.UtcNow;
     }
 
+    private IQueryable<ApplicationUser> Providers() =>
+        db.UsersInRole(Roles.Trainer).Concat(db.UsersInRole(Roles.Professional));
+
+    private async Task<List<SelectListItem>> ProviderOptionsAsync(string selected)
+    {
+        var trainers = new SelectListGroup { Name = "Trainers" };
+        var professionals = new SelectListGroup { Name = "Health professionals" };
+        var options = await db.UsersInRole(Roles.Trainer).OrderBy(u => u.FullName)
+            .Select(u => new SelectListItem(u.FullName, u.Id, u.Id == selected)).ToListAsync();
+        options.ForEach(o => o.Group = trainers);
+
+        var others = await db.UsersInRole(Roles.Professional).OrderBy(u => u.FullName)
+            .Select(u => new SelectListItem(u.FullName, u.Id, u.Id == selected)).ToListAsync();
+        others.ForEach(o => o.Group = professionals);
+
+        return [.. options, .. others];
+    }
+
     private IActionResult BackTo(string? returnUrl, int id) =>
         Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Details), new { id });
 
     private IQueryable<Appointment> Mine() =>
-        IsTrainer ? db.Appointments.Where(a => a.TrainerId == UserId) : db.Appointments.Where(a => a.ClientId == UserId);
+        IsProvider ? db.Appointments.Where(a => a.TrainerId == UserId) : db.Appointments.Where(a => a.ClientId == UserId);
 
     private Task<Appointment?> FindOwnAsync(int id) => Mine().Include(a => a.Client).FirstOrDefaultAsync(a => a.Id == id);
 
@@ -243,12 +261,9 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
 
         return new AppointmentsPageViewModel
         {
-            IsTrainer = IsTrainer,
+            IsProvider = IsProvider,
             Form = form,
-            Trainers = IsTrainer ? [] : await db.UsersInRole(Roles.Trainer)
-                .OrderBy(u => u.FullName)
-                .Select(u => new SelectListItem(u.FullName, u.Id, u.Id == form.TrainerId))
-                .ToListAsync(),
+            Trainers = IsProvider ? [] : await ProviderOptionsAsync(form.TrainerId),
             Requests = await mine.Where(a => a.Status == AppointmentStatus.Pending && a.StartsAt > now)
                 .OrderBy(a => a.StartsAt).ToListAsync(),
             Upcoming = await mine.Where(a => a.Status == AppointmentStatus.Approved && a.StartsAt > now)

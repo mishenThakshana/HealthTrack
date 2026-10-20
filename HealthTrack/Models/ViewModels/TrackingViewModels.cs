@@ -66,5 +66,6 @@ public class MeasurementFormViewModel
 public class TrackingPageViewModel<TForm, TEntry> where TForm : new()
 {
     public TForm Form { get; init; } = new();
+    public int? EditingId { get; init; }
     public IReadOnlyList<TEntry> Entries { get; init; } = [];
 }

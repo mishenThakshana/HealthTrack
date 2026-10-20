@@ -1,0 +1,180 @@
+@model ReportsViewModel
+@using HealthTrack.Helpers
+@{
+    ViewData["Title"] = "Reports";
+    string Badge(string level) => level switch
+    {
+        "High" => "ht-badge-active",
+        "Medium" => "ht-badge-completed",
+        "Low" => "ht-badge-pending",
+        _ => "ht-badge-inactive"
+    };
+    var maxStatus = Math.Max(1, Model.Appointments.Max(a => a.Count));
+}
+
+<div class="container py-4">
+    <div class="ht-dash-header">
+        <div>
+            <h1 class="h3 mb-1">Reports</h1>
+            <p class="text-muted mb-0">
+                @(Model.IsAdmin ? "Client performance, popular routines and engagement across HealthTrack." : "Performance and engagement of your clients.")
+                @Periods.Label(Model.Days).
+            </p>
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <div class="btn-group btn-group-sm ht-range" role="group" aria-label="Time range">
+                @foreach (var range in Periods.Ranges)
+                {
+                    <a class="btn @(range == Model.Days ? "btn-primary" : "btn-outline-primary")" asp-action="Index" asp-route-days="@range"
+                       aria-current="@(range == Model.Days ? "true" : null)">@(range switch { 365 => "12 months", 180 => "6 months", _ => $"{range} days" })</a>
+                }
+            </div>
+            <a class="btn btn-outline-primary btn-sm" asp-action="Export" asp-route-days="@Model.Days"><i class="bi bi-download"></i> CSV</a>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-people", "Active clients", $"{Model.ActiveClients} / {Model.TotalClients}", "Logged anything in this period")' /></div>
+        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-calendar-week", "Active days", Model.AverageActiveDaysPerWeek.ToString("0.0"), "per client per week")' /></div>
+        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-journal-check", "Entries logged", Model.TotalEntries.ToString("N0"), "Workouts, meals and measurements")' /></div>
+        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-check2-circle", "Appointments", Model.AppointmentsCompleted.ToString(), "Completed in this period")' /></div>
+    </div>
+
+    <div class="ht-panel mb-3">
+        <div class="ht-panel-header">
+            <h2 class="h6 mb-0"><i class="bi bi-person-lines-fill"></i> Client performance</h2>
+            <span class="small text-muted">@Model.TotalClients client@(Model.TotalClients == 1 ? "" : "s")</span>
+        </div>
+        @if (Model.Clients.Count == 0)
+        {
+            <partial name="_EmptyState" model='new EmptyState("bi-people", Model.IsAdmin ? "No clients have registered yet." : "No clients are assigned to you yet.")' />
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table ht-table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Client</th>
+                            @if (Model.IsAdmin) { <th class="d-none d-md-table-cell">Trainer</th> }
+                            <th class="text-end">Workouts</th>
+                            <th class="text-end d-none d-sm-table-cell">Minutes</th>
+                            <th class="text-end d-none d-lg-table-cell">kcal burned</th>
+                            <th class="text-end d-none d-lg-table-cell">Avg kcal eaten</th>
+                            <th class="text-end d-none d-md-table-cell">Weight change</th>
+                            <th class="text-end">Active days</th>
+                            <th class="text-end d-none d-md-table-cell">Last activity</th>
+                            <th class="text-end">Engagement</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in Model.Clients)
+                        {
+                            <tr>
+                                <td>
+                                    @if (Model.IsAdmin)
+                                    {
+                                        <span class="fw-semibold">@c.FullName</span>
+                                    }
+                                    else
+                                    {
+                                        <a class="fw-semibold" asp-controller="Progress" asp-action="Index" asp-route-id="@c.Id" asp-route-days="@(Model.Days < 90 ? 90 : Model.Days)">@c.FullName</a>
+                                    }
+                                    <div class="small text-muted text-break">@c.Email</div>
+                                </td>
+                                @if (Model.IsAdmin) { <td class="small d-none d-md-table-cell">@(c.TrainerName ?? "Unassigned")</td> }
+                                <td class="text-end">@c.Workouts</td>
+                                <td class="text-end d-none d-sm-table-cell">@c.Minutes.ToString("N0")</td>
+                                <td class="text-end d-none d-lg-table-cell">@c.CaloriesBurned.ToString("N0")</td>
+                                <td class="text-end d-none d-lg-table-cell">@(c.AverageCaloriesEaten?.ToString("N0") ?? "—")</td>
+                                <td class="text-end text-nowrap d-none d-md-table-cell">@(c.WeightChange is { } wc ? $"{wc:+0.0;-0.0;0.0} kg" : "—")</td>
+                                <td class="text-end">@c.ActiveDays</td>
+                                <td class="text-end text-nowrap small d-none d-md-table-cell">@(c.LastActivity?.ToString("d MMM") ?? "—")</td>
+                                <td class="text-end"><span class="badge rounded-pill @Badge(c.Engagement)">@c.Engagement</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="small text-muted mt-3 mb-0">Engagement is based on active days per week: High 3+, Medium 1–3, Low under 1.</p>
+        }
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="ht-panel h-100">
+                <div class="ht-panel-header"><h2 class="h6 mb-0"><i class="bi bi-graph-up"></i> Engagement</h2></div>
+                <partial name="_Chart" model="Model.Engagement" view-data='new ViewDataDictionary(ViewData) { ["Empty"] = "No client activity in this period." }' />
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="ht-panel h-100">
+                <div class="ht-panel-header"><h2 class="h6 mb-0"><i class="bi bi-calendar-check"></i> Appointments</h2></div>
+                <ul class="list-unstyled ht-item-list mb-0">
+                    @foreach (var a in Model.Appointments)
+                    {
+                        <li>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between"><span>@a.Status</span><span class="fw-semibold">@a.Count</span></div>
+                                <div class="ht-meter" aria-hidden="true"><span style="width: @(a.Count * 100 / maxStatus)%"></span></div>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="ht-panel h-100">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-clipboard-check"></i> Popular plan exercises</h2>
+                    <span class="small text-muted">all time</span>
+                </div>
+                @if (Model.TopExercises.Count == 0)
+                {
+                    <partial name="_EmptyState" model='new EmptyState("bi-clipboard", "No workout plans have exercises yet.")' />
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table ht-table align-middle mb-0">
+                            <thead><tr><th>Exercise</th><th class="text-end">Plans</th><th class="text-end">Clients</th></tr></thead>
+                            <tbody>
+                                @foreach (var e in Model.TopExercises)
+                                {
+                                    <tr><td class="fw-semibold">@e.Name</td><td class="text-end">@e.Plans</td><td class="text-end">@e.Clients</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="ht-panel h-100">
+                <div class="ht-panel-header"><h2 class="h6 mb-0"><i class="bi bi-trophy"></i> Most logged activities</h2></div>
+                @if (Model.TopActivities.Count == 0)
+                {
+                    <partial name="_EmptyState" model='new EmptyState("bi-activity", "No workouts logged in this period.")' />
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table ht-table align-middle mb-0">
+                            <thead><tr><th>Activity</th><th class="text-end">Sessions</th><th class="text-end">Minutes</th><th class="text-end">Clients</th></tr></thead>
+                            <tbody>
+                                @foreach (var a in Model.TopActivities)
+                                {
+                                    <tr><td class="fw-semibold">@a.Activity</td><td class="text-end">@a.Sessions</td><td class="text-end">@a.Minutes.ToString("N0")</td><td class="text-end">@a.Clients</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ChartScripts" />
+}

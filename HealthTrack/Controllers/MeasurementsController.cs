@@ -13,8 +13,25 @@ public class MeasurementsController(ApplicationDbContext db, UserManager<Applica
 {
     private string UserId => userManager.GetUserId(User)!;
 
-    public async Task<IActionResult> Index() =>
-        View(await BuildPageAsync(new MeasurementFormViewModel { HeightCm = await LastHeightAsync() }));
+    public async Task<IActionResult> Index(int? edit)
+    {
+        if (edit is null)
+            return View(await BuildPageAsync(new MeasurementFormViewModel { HeightCm = await LastHeightAsync() }));
+
+        var entry = await FindAsync(edit.Value);
+        if (entry is null)
+            return NotFound();
+
+        return View(await BuildPageAsync(new MeasurementFormViewModel
+        {
+            Date = entry.Date,
+            WeightKg = entry.WeightKg,
+            HeightCm = entry.HeightCm,
+            BodyFatPercent = entry.BodyFatPercent,
+            RestingHeartRate = entry.RestingHeartRate,
+            Notes = entry.Notes
+        }, entry.Id));
+    }
 
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Create([Bind(Prefix = "Form")] MeasurementFormViewModel form)
@@ -40,9 +57,32 @@ public class MeasurementsController(ApplicationDbContext db, UserManager<Applica
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(int id, [Bind(Prefix = "Form")] MeasurementFormViewModel form)
+    {
+        var entry = await FindAsync(id);
+        if (entry is null)
+            return NotFound();
+
+        TrackingRules.ValidateDate(ModelState, form.Date, entry.Date);
+        if (!ModelState.IsValid)
+            return View(nameof(Index), await BuildPageAsync(form, id));
+
+        entry.Date = form.Date;
+        entry.WeightKg = Math.Round(form.WeightKg!.Value, 1);
+        entry.HeightCm = form.HeightCm is { } h ? Math.Round(h, 1) : entry.HeightCm ?? await LastHeightAsync();
+        entry.BodyFatPercent = form.BodyFatPercent is { } bf ? Math.Round(bf, 1) : null;
+        entry.RestingHeartRate = form.RestingHeartRate;
+        entry.Notes = TrackingRules.Clean(form.Notes);
+        await db.SaveChangesAsync();
+
+        TempData["Success"] = "Measurement updated.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
     {
-        var entry = await db.HealthMeasurements.FirstOrDefaultAsync(m => m.Id == id && m.ClientId == UserId);
+        var entry = await FindAsync(id);
         if (entry is null)
             return NotFound();
 
@@ -59,9 +99,12 @@ public class MeasurementsController(ApplicationDbContext db, UserManager<Applica
             .OrderByDescending(m => m.Date).ThenByDescending(m => m.Id)
             .Select(m => m.HeightCm).FirstOrDefaultAsync();
 
-    private async Task<TrackingPageViewModel<MeasurementFormViewModel, HealthMeasurement>> BuildPageAsync(MeasurementFormViewModel form) => new()
+    private Task<HealthMeasurement?> FindAsync(int id) => db.HealthMeasurements.FirstOrDefaultAsync(m => m.Id == id && m.ClientId == UserId);
+
+    private async Task<TrackingPageViewModel<MeasurementFormViewModel, HealthMeasurement>> BuildPageAsync(MeasurementFormViewModel form, int? editingId = null) => new()
     {
         Form = form,
+        EditingId = editingId,
         Entries = await db.HealthMeasurements.Where(m => m.ClientId == UserId)
             .OrderByDescending(m => m.Date).ThenByDescending(m => m.Id)
             .Take(TrackingRules.PageSize).ToListAsync()

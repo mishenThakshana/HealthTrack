@@ -52,7 +52,7 @@
                         @if (User.IsInRole(Roles.Trainer))
                         {
                             <li class="nav-item">
-                                <a class="nav-link @NavActive("Clients")" asp-controller="Clients" asp-action="Index">
+                                <a class="nav-link @NavActiveAny("Clients", "Progress")" asp-controller="Clients" asp-action="Index">
                                     <i class="bi bi-people"></i> Clients
                                 </a>
                             </li>
@@ -69,7 +69,7 @@
                                 </ul>
                             </li>
                         }
-                        @if (User.IsInRole(Roles.Trainer) || User.IsInRole(Roles.Client))
+                        @if (User.IsInRole(Roles.Trainer) || User.IsInRole(Roles.Professional) || User.IsInRole(Roles.Client))
                         {
                             <li class="nav-item">
                                 <a class="nav-link @NavActive("Appointments")" asp-controller="Appointments" asp-action="Index">
@@ -80,21 +80,36 @@
                         @if (User.IsInRole(Roles.Client))
                         {
                             <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle @NavActiveAny("WorkoutLogs", "MealLogs", "Measurements")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <a class="nav-link dropdown-toggle @NavActiveAny("WorkoutLogs", "MealLogs", "Measurements", "Progress")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bi bi-journal-plus"></i> Track
                                 </a>
                                 <ul class="dropdown-menu ht-user-menu">
                                     <li><a class="dropdown-item" asp-controller="WorkoutLogs" asp-action="Index"><i class="bi bi-activity"></i> Workouts</a></li>
                                     <li><a class="dropdown-item" asp-controller="MealLogs" asp-action="Index"><i class="bi bi-egg-fried"></i> Meals</a></li>
                                     <li><a class="dropdown-item" asp-controller="Measurements" asp-action="Index"><i class="bi bi-rulers"></i> Measurements</a></li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                    <li><a class="dropdown-item" asp-controller="Progress" asp-action="Index"><i class="bi bi-graph-up"></i> Progress</a></li>
                                 </ul>
                             </li>
                         }
                         @if (User.IsInRole(Roles.Admin))
                         {
                             <li class="nav-item">
+                                <a class="nav-link @NavActive("Users")" asp-controller="Users" asp-action="Index">
+                                    <i class="bi bi-person-gear"></i> Users
+                                </a>
+                            </li>
+                            <li class="nav-item">
                                 <a class="nav-link @NavActive("TrainerAssignments")" asp-controller="TrainerAssignments" asp-action="Index">
                                     <i class="bi bi-diagram-3"></i> Assignments
+                                </a>
+                            </li>
+                        }
+                        @if (User.IsInRole(Roles.Trainer) || User.IsInRole(Roles.Admin))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @NavActive("Reports")" asp-controller="Reports" asp-action="Index">
+                                    <i class="bi bi-bar-chart"></i> Reports
                                 </a>
                             </li>
                         }

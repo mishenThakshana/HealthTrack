@@ -4,18 +4,24 @@ public record StatTile(string Icon, string Label, string Value, string Hint);
 
 public record EmptyState(string Icon, string Message);
 
-public record RecentUser(string FullName, string Email, string Role, DateTime CreatedAt);
+public record RecentUser(string FullName, string Email, string Role, DateTime CreatedAt, DateTime? LastLoginAt);
+
+public record UsageTotal(string Icon, string Label, int Total, int ThisWeek);
 
 public class AdminDashboardViewModel
 {
     public int TotalUsers { get; init; }
     public int Clients { get; init; }
     public int Trainers { get; init; }
+    public int Professionals { get; init; }
+    public int ActiveThisWeek { get; init; }
     public int NewThisWeek { get; init; }
     public int LockedOut { get; init; }
     public IReadOnlyList<RecentUser> RecentUsers { get; init; } = [];
     public int AssignedClients { get; init; }
     public IReadOnlyList<TrainerLoad> TrainerLoads { get; init; } = [];
+    public required ChartData Usage { get; init; }
+    public IReadOnlyList<UsageTotal> UsageTotals { get; init; } = [];
 }
 
 public class MemberDashboardViewModel
@@ -26,7 +32,8 @@ public class MemberDashboardViewModel
     public string? Gender { get; init; }
     public DateTime MemberSince { get; init; }
 
-    public string FirstName => FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? FullName;
+    public string FirstName =>
+        FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).SkipWhile(p => p.EndsWith('.')).FirstOrDefault() ?? FullName;
 }
 
 public class ClientDashboardViewModel
@@ -42,6 +49,7 @@ public class ClientDashboardViewModel
     public DietPlan? DietPlan { get; init; }
     public IReadOnlyList<WorkoutLog> RecentWorkouts { get; init; } = [];
     public IReadOnlyList<Appointment> UpcomingAppointments { get; init; } = [];
+    public IReadOnlyList<FeedbackItem> LatestFeedback { get; init; } = [];
 
     public IEnumerable<WorkoutExercise> TodaysExercises =>
         WorkoutPlan?.Exercises.Where(e => e.Day is null || e.Day == DateTime.Today.DayOfWeek) ?? [];
@@ -55,6 +63,17 @@ public class TrainerDashboardViewModel
     public int ClientWorkoutsThisWeek { get; init; }
     public IReadOnlyList<Appointment> TodaysAppointments { get; init; } = [];
     public IReadOnlyList<Appointment> AppointmentRequests { get; init; } = [];
+}
+
+public class ProfessionalDashboardViewModel
+{
+    public required MemberDashboardViewModel Profile { get; init; }
+    public IReadOnlyList<Appointment> TodaysAppointments { get; init; } = [];
+    public IReadOnlyList<Appointment> AppointmentRequests { get; init; } = [];
+    public IReadOnlyList<Appointment> Upcoming { get; init; } = [];
+    public int PendingCount { get; init; }
+    public int CompletedThisMonth { get; init; }
+    public int ClientsSeen { get; init; }
 }
 
 public record DeleteButton(string Controller, string Action, Dictionary<string, string> RouteValues, string Confirm, string? Label = null);

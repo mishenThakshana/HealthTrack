@@ -7,7 +7,8 @@ namespace HealthTrack.Data;
 public static class DbSeeder
 {
     private sealed record SeedUser(
-        string Email, string Password, string FullName, string Role, DateOnly? DateOfBirth, string? Gender, string? TrainerEmail);
+        string Email, string Password, string FullName, string Role,
+        DateOnly? DateOfBirth = null, string? Gender = null, string? TrainerEmail = null);
 
     public static async Task SeedAsync(IServiceProvider services)
     {

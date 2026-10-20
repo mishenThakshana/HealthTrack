@@ -13,7 +13,23 @@ public class MealLogsController(ApplicationDbContext db, UserManager<Application
 {
     private string UserId => userManager.GetUserId(User)!;
 
-    public async Task<IActionResult> Index() => View(await BuildPageAsync(new MealLogFormViewModel()));
+    public async Task<IActionResult> Index(int? edit)
+    {
+        if (edit is null)
+            return View(await BuildPageAsync(new MealLogFormViewModel()));
+
+        var log = await FindAsync(edit.Value);
+        if (log is null)
+            return NotFound();
+
+        return View(await BuildPageAsync(new MealLogFormViewModel
+        {
+            Date = log.Date,
+            MealType = log.MealType,
+            Description = log.Description,
+            Calories = log.Calories
+        }, log.Id));
+    }
 
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Create([Bind(Prefix = "Form")] MealLogFormViewModel form)
@@ -39,9 +55,32 @@ public class MealLogsController(ApplicationDbContext db, UserManager<Application
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(int id, [Bind(Prefix = "Form")] MealLogFormViewModel form)
+    {
+        var log = await FindAsync(id);
+        if (log is null)
+            return NotFound();
+
+        TrackingRules.ValidateDate(ModelState, form.Date, log.Date);
+        if (!Enum.IsDefined(form.MealType))
+            ModelState.AddModelError("Form.MealType", "Please choose a meal.");
+        if (!ModelState.IsValid)
+            return View(nameof(Index), await BuildPageAsync(form, id));
+
+        log.Date = form.Date;
+        log.MealType = form.MealType;
+        log.Description = form.Description.Trim();
+        log.Calories = form.Calories;
+        await db.SaveChangesAsync();
+
+        TempData["Success"] = "Meal entry updated.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
     {
-        var log = await db.MealLogs.FirstOrDefaultAsync(l => l.Id == id && l.ClientId == UserId);
+        var log = await FindAsync(id);
         if (log is null)
             return NotFound();
 
@@ -52,9 +91,12 @@ public class MealLogsController(ApplicationDbContext db, UserManager<Application
         return RedirectToAction(nameof(Index));
     }
 
-    private async Task<TrackingPageViewModel<MealLogFormViewModel, MealLog>> BuildPageAsync(MealLogFormViewModel form) => new()
+    private Task<MealLog?> FindAsync(int id) => db.MealLogs.FirstOrDefaultAsync(l => l.Id == id && l.ClientId == UserId);
+
+    private async Task<TrackingPageViewModel<MealLogFormViewModel, MealLog>> BuildPageAsync(MealLogFormViewModel form, int? editingId = null) => new()
     {
         Form = form,
+        EditingId = editingId,
         Entries = await db.MealLogs.Where(l => l.ClientId == UserId)
             .OrderByDescending(l => l.Date).ThenByDescending(l => l.Id)
             .Take(TrackingRules.PageSize).ToListAsync()

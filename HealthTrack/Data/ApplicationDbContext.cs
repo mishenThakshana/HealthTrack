@@ -15,6 +15,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<MealLog> MealLogs => Set<MealLog>();
     public DbSet<HealthMeasurement> HealthMeasurements => Set<HealthMeasurement>();
     public DbSet<Appointment> Appointments => Set<Appointment>();
+    public DbSet<ProgressFeedback> ProgressFeedback => Set<ProgressFeedback>();
 
     public IQueryable<ApplicationUser> UsersInRole(string role) =>
         Users.Where(u => UserRoles.Any(ur => ur.UserId == u.Id && Roles.Any(r => r.Id == ur.RoleId && r.Name == role)));
@@ -69,6 +70,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             a.HasIndex(x => new { x.TrainerId, x.StartsAt });
             a.HasIndex(x => new { x.ClientId, x.StartsAt });
             a.Ignore(x => x.DurationMinutes);
+        });
+
+        builder.Entity<ProgressFeedback>(f =>
+        {
+            f.HasOne(x => x.Client).WithMany().HasForeignKey(x => x.ClientId).OnDelete(DeleteBehavior.NoAction);
+            f.HasOne(x => x.Author).WithMany().HasForeignKey(x => x.AuthorId).OnDelete(DeleteBehavior.NoAction);
+            f.HasIndex(x => new { x.ClientId, x.CreatedAt });
         });
     }
 }

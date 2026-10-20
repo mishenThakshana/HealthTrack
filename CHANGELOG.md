@@ -2,9 +2,119 @@
 
 A log of every task completed on HealthTrack, newest first.
 
-## 2026-10-04 — Appointment system
+## 2026-10-20 — Progress tracking & analytics, plus earlier gaps
 
 Commit: not committed yet
+
+### Added
+- **Data model** (migration `20261020070542_ProgressAndAdmin`):
+  - `ApplicationUser.LastLoginAt` (UTC, nullable), set on sign-in and registration.
+  - `ProgressFeedback`: client, author, `Message` (1000), `CreatedAt` (UTC). Both FKs to `AspNetUsers` use `NoAction` (two paths to the same table). Index on `(ClientId, CreatedAt)`.
+- **Health professional role** (`Roles.Professional`, shown as "Health professional" via `Roles.DisplayName`):
+  - Can register (third option on the Register page, `bi-hospital`) and is seeded in Development as `doctor@healthtrack.local` / `Doctor@12345` (Dr. Sam Patel).
+  - `Roles.Providers` (Trainer + Professional) is used for the appointment provider actions.
+  - New `Dashboard/Professional`: tiles for appointments today (with next time), pending requests, completed this month and distinct clients seen; panels for Today, Coming up (next 5 after today), requests (with Approve/Decline) and the profile card.
+- **Progress page** (`ProgressController`, `/Progress`, Client + providers):
+  - Clients always see their own data (any `id` is ignored). Trainers see their assigned clients. Professionals see clients they have an approved or completed appointment with (`ClientAccess.VisibleClients`). Anyone else gets 404. Providers without an `id` are redirected to Clients or Appointments.
+  - Ranges: 30 / 90 / 180 / 365 days (`Helpers/Periods.cs`; anything else falls back to 90).
+  - Tiles: current weight with change over the period, BMI with category, workouts (minutes and kcal burned), average kcal eaten per logged day with the diet plan target. The subtitle shows active days out of the period.
+  - Charts: weight, BMI (height carried forward, including from before the range), workout minutes and calories burned (daily for 30 days, weekly otherwise), calories eaten (daily up to 90 days, weekly average per logged day beyond) with the active diet plan's target as a dashed line, plus body fat and resting heart rate when there's data. Several measurements on one day keep the last one.
+  - Top 5 activities with a meter bar.
+  - Feedback: providers who can see the client post feedback (5–1000 characters). Clients see it with the author's name, role and time. Authors can delete their own; anyone else gets 404.
+- **Reports** (`ReportsController`, `/Reports`, Trainer + Admin; ranges 30/90/180/365 days, default 30):
+  - Scope: trainers see their own clients, plans and appointments; admins see all.
+  - Tiles: active clients / total, average active days per client per week, entries logged, appointments completed.
+  - Client performance table: workouts, minutes, kcal burned, average kcal eaten, weight change, active days, last activity (all time) and an engagement badge (High ≥3 active days/week, Medium ≥1, Low >0, Inactive). Trainers' client names link to the client's Progress page; admins also see each client's trainer.
+  - Engagement chart (active clients per day, or per week above 30 days), appointments by status with meter bars, the 8 most common plan exercises (plans and clients, all time) and the 8 most logged activities (sessions, minutes, clients).
+  - `Reports/Export`: the client table as a UTF-8 CSV (with BOM, so Excel opens it correctly). Text cells starting with `= + - @` are prefixed with `'` to stop formula injection; numbers are left alone.
+- **User management** (`UsersController`, `/Users`, Admin only):
+  - List with name/email search and role filter (up to 200 rows), showing role, trainer, joined, last sign-in and status (Active / Locked / Disabled).
+  - Create a user with any role (including Admin), with a password. Email is marked confirmed.
+  - Edit name, email (also the username), role, date of birth and gender. Role changes are blocked for your own account, for a trainer who still has assigned clients, and for anyone with upcoming pending or approved appointments. Moving someone out of the Client role clears their trainer.
+  - Reset password, using Identity's reset token so the password rules apply.
+  - Disable (lockout until `DateTimeOffset.MaxValue`) or enable/unlock. You can't disable yourself.
+  - Role changes, disabling and password resets update the security stamp. `SecurityStampValidatorOptions.ValidationInterval` is now 1 minute, so existing sessions pick up the change within a minute.
+  - `Helpers/AccountStatus.cs`: disabled/locked checks, label and badge.
+- **Editable log entries**: `Edit` actions on `WorkoutLogs`, `MealLogs` and `Measurements`. `Index?edit={id}` loads the entry into the form ("Edit workout", "Save changes" and Cancel), with the row highlighted (`.ht-editing`). Edit (pencil) links sit beside the delete buttons. Only the owner's entries can be edited (404 otherwise). An unchanged date older than a year is still accepted, so old entries stay editable. A measurement edited with a blank height keeps its previous height.
+- **Charts**: Chart.js 4.4.1 copied to `wwwroot/lib/chart.js` (with its licence), `wwwroot/js/charts.js`, and the `_Chart` / `_ChartScripts` partials. Chart data is embedded as JSON (`ChartData` / `ChartSeries` records) and every chart has a "Show data" table. Single-axis charts only, 2px lines, rounded bars, an index tooltip, a legend only for several series, whole-number ticks for counts, and no animation when the user prefers reduced motion. Colours: brand orange first, then blue, aqua and violet for the stacked usage chart (checked with a colour-blindness palette validator; aqua is below 3:1 contrast, so that chart has a totals list and a data table).
+- New partials: `_EditLink`, `_TrackingSubmit`, `Users/_UserFields`. New view models: `ProgressViewModels.cs`, `ReportViewModels.cs`, `UserViewModels.cs`, `ChartViewModels.cs`.
+
+### Changed
+- **Appointments:** clients can book trainers or health professionals. The dropdown is grouped into "Trainers" and "Health professionals" and labelled "Trainer or health professional". All provider actions (approve, decline, edit, complete, cancel) are open to both roles. `IsTrainer` was renamed `IsProvider` in the appointment controller, view models and views. Details pages say "With", "Note from {name}" and "Waiting for {name}…". Providers get a "Health progress" link to the client once an appointment is approved or completed. The `Appointment.TrainerId` column was kept and now holds whichever provider was booked.
+- **Admin dashboard:**
+  - Six tiles: total, active this week, clients, trainers, professionals, locked/disabled.
+  - A stacked "System usage · last 14 days" chart (workouts, meals, measurements, appointments created per day).
+  - A totals list with "+this week".
+  - Recent registrations shows each user's last sign-in and has an "All users" link. The header has "New user" and "Reports" buttons.
+- **Client dashboard:** a "Progress" button and a "Latest feedback" panel (latest 2, clamped to 3 lines).
+- **Trainer dashboard:** a "Reports" button. **Client details:** a "Progress & feedback" button.
+- **Navigation:**
+  - Admin gets Users and Reports. Trainer gets Reports, and Clients stays highlighted on a client's Progress page. Professionals get Appointments.
+  - The client's Track dropdown has a Progress item.
+  - The account pill shows "Health professional".
+- **Measurements page:** a "See trends" button. `_MeasurementTable` takes `CanManage` and `EditingId` instead of `CanDelete`.
+- **Sign-in:** a disabled account now gets "This account has been disabled. Please contact an administrator." instead of the 15-minute lockout message.
+- `TrackingRules.ValidateDate` takes an optional original date. `MemberDashboardViewModel.FirstName` skips titles like "Dr.", so the greeting says "Hi, Sam" rather than "Hi, Dr.".
+- `site.css`: `.ht-chart`, `.ht-chart-data`, `.ht-meter`, `.ht-range`, `.ht-editing`, `.ht-clamp`, `.ht-usage-week`.
+- README: health professional seed account, Appointments wording, new "Progress tracking & analytics" and "User management" sections, "Who can do what" table, Chart.js in the tech stack, progress ticked.
+- CHANGELOG: filled in the commit hash (`d3f5e75`) for the appointment entry.
+
+### Fixed
+- **Seeding silently skipped accounts.** The configuration binder dropped any `SeedUsers` entry that left out an optional field (`DateOfBirth`, `Gender`, `TrainerEmail`), because the `SeedUser` record's constructor parameters had no defaults. Only the client entry, which sets every field, was being bound; the admin and trainer only existed because an earlier version of the seeder created them. The optional parameters now default to `null`.
+- **Chart curve smoothing turned off** (`tension: 0`). The smoothing drew bumps between points that weren't in the data (resting heart rate looked like it rose above 63).
+
+### Environment / verification
+- Build: succeeded with 0 warnings and 0 errors. `dotnet ef migrations add ProgressAndAdmin`; applied automatically on startup. Docker Desktop was started (SQL Server wasn't running).
+- Ran on port 5299 and tested with curl (`ht.sh` in the session scratchpad), signed in as all four seeded accounts plus a temporary account:
+  - **Access sweep:**
+    - Every new page returns 200 for the roles allowed to use it. Reports, Users and the Professional dashboard return Access Denied for other roles.
+    - Admin → Progress and Appointments → Access Denied. Providers without an id → redirected.
+  - **Progress (seeded data posted through the forms):**
+    - 13 measurements, 23 workouts and 63 meals. Tiles showed 66.2 kg / −5.7 kg, BMI 23.5 "Healthy weight", 23 workouts, 1,738 kcal average.
+    - All seven charts were present. The 7-day range falls back to 90 days.
+  - **Feedback:**
+    - A short message fails validation. The trainer's feedback shows on the client dashboard.
+    - The professional gets 404 on the client's Progress page and on posting feedback until the client books them and they approve. After that: 200, a "Health progress" link on the appointment, and their feedback shows as "Health professional".
+    - The professional deleting the trainer's feedback → 404. A client posting feedback → Access Denied.
+  - **Log editing:**
+    - Workout edit form prefills and highlights the row. A future date → error. Saving → updated.
+    - Meal edit works, and `Brunch` is rejected. Measurement edit keeps the height (168.0).
+    - The trainer and a second client trying to edit the client's entries → Access Denied / 404. A missing id → 404.
+  - **Users:**
+    - Create validation: missing password, invalid role, duplicate email, weak password.
+    - Created `c2@healthtrack.local`, who could sign in.
+    - Role changes blocked as expected: trainer → client (has a client), professional → client (upcoming appointment), admin self-change, admin self-disable. A duplicate email on edit → error.
+    - Changing `c2` from Client to Trainer: their old session still worked straight away and was signed out after 65 seconds. Signing in again landed on the trainer dashboard.
+    - Disable → the disabled-account message at sign-in and a "Disabled" badge. Enable → works.
+    - Password reset with a mismatch → error. After the reset, the old password fails and the new one works.
+  - **Reports:** trainer tiles 1/1, 4.4 days/week, 44 entries. CSV export for trainer and admin (admin includes the Trainer column). After the fix, negative weight change exports as `-5.7`.
+  - **Admin dashboard:** 6 users, 5 active, usage chart and totals correct.
+- Screenshots (headless Chrome over the DevTools protocol, with reduced motion emulated):
+  - At 1200px: client Progress (30 and 90 days), admin dashboard, trainer Reports, professional dashboard, Users list, user edit, workout log in edit mode, Register.
+  - At 420px: client Progress.
+- **Bugs found and fixed while testing:**
+  - The seeding bug above.
+  - CSV numbers were being prefixed with `'`.
+  - Count axes showed decimal ticks.
+  - The curve overshoot.
+  - The "Hi, Dr." greeting.
+  - Screenshots caught charts mid-animation (headless Chrome doesn't run animation frames reliably); the screenshot script now emulates reduced motion.
+- **Cleanup:**
+  - Deleted all test workouts, meals, measurements, the appointment and the feedback, and reset those identity seeds.
+  - Removed `c2@healthtrack.local`.
+  - Kept the existing workout plan and `johndoe@gmail.com`. The seeded accounts' `LastLoginAt` values from testing remain.
+  - Stopped only the port-5299 process and headless Chrome. A temporary startup log that had dumped configuration was deleted.
+
+### Notes
+- Email confirmation is still off. It needs a real email sender (SMTP or a provider), which also suits the Notifications step.
+- The `Appointment.TrainerId` / `TrainerNote` names were kept to avoid a rename migration; they now mean "provider".
+- Admins see aggregated reports and client names but can't open an individual client's Progress page, which keeps detailed health data with the client's trainer and professionals.
+- Accounts are disabled, not deleted, because plans, appointments and feedback reference users with `NoAction` FKs.
+- Usage per day is based on when entries were created (`CreatedAt`), not the date they were logged for.
+
+## 2026-10-04 — Appointment system
+
+Commit: `d3f5e75`
 
 ### Added
 - **Data model** (migration `20261004063449_Appointments`):

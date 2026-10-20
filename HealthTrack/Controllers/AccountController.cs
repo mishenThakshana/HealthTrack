@@ -1,4 +1,5 @@
 using HealthTrack.Data;
+using HealthTrack.Helpers;
 using HealthTrack.Models;
 using HealthTrack.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -12,7 +13,7 @@ public class AccountController(
     SignInManager<ApplicationUser> signInManager,
     ILogger<AccountController> logger) : Controller
 {
-    public static readonly string[] RegisterableRoles = [Roles.Client, Roles.Trainer];
+    public static readonly string[] RegisterableRoles = [Roles.Client, Roles.Trainer, Roles.Professional];
     public static readonly string[] Genders = ["Male", "Female", "Other", "Prefer not to say"];
 
     [HttpGet, AllowAnonymous]
@@ -45,7 +46,8 @@ public class AccountController(
             Email = model.Email.Trim(),
             FullName = model.FullName.Trim(),
             DateOfBirth = model.DateOfBirth,
-            Gender = model.Gender
+            Gender = model.Gender,
+            LastLoginAt = DateTime.UtcNow
         };
 
         var result = await userManager.CreateAsync(user, model.Password);
@@ -86,12 +88,23 @@ public class AccountController(
 
         if (result.Succeeded)
         {
+            if (await userManager.FindByEmailAsync(model.Email.Trim()) is { } user)
+            {
+                user.LastLoginAt = DateTime.UtcNow;
+                await userManager.UpdateAsync(user);
+            }
+
             if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                 return LocalRedirect(returnUrl);
             return RedirectToAction("Index", "Dashboard");
         }
 
-        if (result.IsLockedOut)
+        if (result.IsLockedOut && await userManager.FindByEmailAsync(model.Email.Trim()) is { } locked
+            && AccountStatus.IsDisabled(locked.LockoutEnd))
+        {
+            ModelState.AddModelError(string.Empty, "This account has been disabled. Please contact an administrator.");
+        }
+        else if (result.IsLockedOut)
         {
             logger.LogWarning("Account locked out after failed logins: {Email}", model.Email);
             ModelState.AddModelError(string.Empty, "Too many failed attempts. Your account is locked for 15 minutes.");

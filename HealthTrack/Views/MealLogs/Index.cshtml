@@ -18,9 +18,9 @@
         <div class="col-lg-4">
             <div class="ht-panel">
                 <div class="ht-panel-header">
-                    <h2 class="h6 mb-0"><i class="bi bi-plus-circle"></i> Log a meal</h2>
+                    <h2 class="h6 mb-0"><i class="bi @(Model.EditingId is null ? "bi-plus-circle" : "bi-pencil")"></i> @(Model.EditingId is null ? "Log a meal" : "Edit meal")</h2>
                 </div>
-                <form asp-action="Create" method="post" novalidate>
+                <form asp-action="@(Model.EditingId is null ? "Create" : "Edit")" asp-route-id="@Model.EditingId" method="post" novalidate>
                     <div class="row g-2 mb-3">
                         <div class="col-6">
                             <label asp-for="Form.Date" class="form-label"></label>
@@ -46,7 +46,7 @@
                         </div>
                         <span asp-validation-for="Form.Calories" class="text-danger small"></span>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-check-lg"></i> Save meal</button>
+                    <partial name="_TrackingSubmit" model="Model.EditingId" view-data='new ViewDataDictionary(ViewData) { ["Save"] = "Save meal" }' />
                 </form>
             </div>
         </div>
@@ -70,10 +70,11 @@
                     <ul class="list-unstyled ht-item-list">
                         @foreach (var meal in day.OrderBy(m => m.MealType).ThenBy(m => m.Id))
                         {
-                            <li>
+                            <li class="@(meal.Id == Model.EditingId ? "ht-editing" : null)">
                                 <span class="badge rounded-pill bg-primary-subtle text-primary ht-meal-badge">@meal.MealType</span>
                                 <div class="flex-grow-1">@meal.Description</div>
                                 @if (meal.Calories is not null) { <span class="small text-muted text-nowrap">@meal.Calories kcal</span> }
+                                <partial name="_EditLink" model="meal.Id" />
                                 <partial name="_DeleteButton" model='new DeleteButton("MealLogs", "Delete", new() { ["id"] = meal.Id.ToString() }, "Delete this meal entry?")' />
                             </li>
                         }

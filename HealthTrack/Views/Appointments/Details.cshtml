@@ -2,12 +2,12 @@
 @using HealthTrack.Helpers
 @{
     var a = Model.Appointment;
-    var other = Model.IsTrainer ? a.Client! : a.Trainer!;
+    var other = Model.IsProvider ? a.Client! : a.Trainer!;
     ViewData["Title"] = $"Appointment with {other.FullName}";
-    var canRespond = Model.IsTrainer && AppointmentRules.CanRespond(a);
-    var canReschedule = Model.IsTrainer && AppointmentRules.CanReschedule(a);
-    var canCancel = AppointmentRules.CanCancel(a, Model.IsTrainer);
-    var canComplete = Model.IsTrainer && AppointmentRules.CanComplete(a);
+    var canRespond = Model.IsProvider && AppointmentRules.CanRespond(a);
+    var canReschedule = Model.IsProvider && AppointmentRules.CanReschedule(a);
+    var canCancel = AppointmentRules.CanCancel(a, Model.IsProvider);
+    var canComplete = Model.IsProvider && AppointmentRules.CanComplete(a);
 }
 
 <div class="container py-4">
@@ -31,11 +31,16 @@
                 </div>
 
                 <dl class="row ht-profile mb-0">
-                    <dt class="col-sm-4">@(Model.IsTrainer ? "Client" : "Trainer")</dt>
+                    <dt class="col-sm-4">@(Model.IsProvider ? "Client" : "With")</dt>
                     <dd class="col-sm-8">
-                        @if (Model.IsTrainer && other.TrainerId == a.TrainerId)
+                        @if (Model.IsProvider && other.TrainerId == a.TrainerId)
                         {
                             <a asp-controller="Clients" asp-action="Details" asp-route-id="@other.Id">@other.FullName</a>
+                        }
+                        else if (Model.IsProvider && a.Status is AppointmentStatus.Approved or AppointmentStatus.Completed)
+                        {
+                            @other.FullName
+                            <a class="small ms-2" asp-controller="Progress" asp-action="Index" asp-route-id="@other.Id"><i class="bi bi-graph-up"></i> Health progress</a>
                         }
                         else
                         {
@@ -61,7 +66,7 @@
 
                     @if (a.TrainerNote is not null)
                     {
-                        <dt class="col-sm-4">Note from trainer</dt>
+                        <dt class="col-sm-4">Note from @(Model.IsProvider ? "you" : a.Trainer!.FullName)</dt>
                         <dd class="col-sm-8 ht-prewrap">@a.TrainerNote</dd>
                     }
 
@@ -88,9 +93,9 @@
                     <p class="text-muted small mb-0">No further actions for this appointment.</p>
                 }
 
-                @if (!Model.IsTrainer && a.Status == AppointmentStatus.Pending && canCancel)
+                @if (!Model.IsProvider && a.Status == AppointmentStatus.Pending && canCancel)
                 {
-                    <p class="text-muted small">Waiting for your trainer to approve this request.</p>
+                    <p class="text-muted small">Waiting for @a.Trainer!.FullName to approve this request.</p>
                 }
 
                 @if (canRespond)
@@ -122,7 +127,7 @@
                 @if (canCancel)
                 {
                     <form asp-action="Cancel" asp-route-id="@a.Id" method="post" data-confirm="Cancel this appointment?">
-                        @if (Model.IsTrainer)
+                        @if (Model.IsProvider)
                         {
                             <label for="cancelNote" class="form-label small">Reason for cancelling (optional)</label>
                             <input id="cancelNote" name="note" maxlength="300" class="form-control form-control-sm mb-2" />

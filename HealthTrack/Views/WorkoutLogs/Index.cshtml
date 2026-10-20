@@ -16,9 +16,9 @@
         <div class="col-lg-4">
             <div class="ht-panel">
                 <div class="ht-panel-header">
-                    <h2 class="h6 mb-0"><i class="bi bi-plus-circle"></i> Log a workout</h2>
+                    <h2 class="h6 mb-0"><i class="bi @(Model.EditingId is null ? "bi-plus-circle" : "bi-pencil")"></i> @(Model.EditingId is null ? "Log a workout" : "Edit workout")</h2>
                 </div>
-                <form asp-action="Create" method="post" novalidate>
+                <form asp-action="@(Model.EditingId is null ? "Create" : "Edit")" asp-route-id="@Model.EditingId" method="post" novalidate>
                     <div class="mb-3">
                         <label asp-for="Form.Date" class="form-label"></label>
                         <input asp-for="Form.Date" type="date" class="form-control" max="@HealthTrack.Helpers.Dates.Today.ToString("yyyy-MM-dd")" />
@@ -46,7 +46,7 @@
                         <input asp-for="Form.Notes" class="form-control" placeholder="Optional" />
                         <span asp-validation-for="Form.Notes" class="text-danger small"></span>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-check-lg"></i> Save workout</button>
+                    <partial name="_TrackingSubmit" model="Model.EditingId" view-data='new ViewDataDictionary(ViewData) { ["Save"] = "Save workout" }' />
                 </form>
             </div>
         </div>
@@ -65,7 +65,7 @@
                     <ul class="list-unstyled ht-item-list mb-0">
                         @foreach (var log in Model.Entries)
                         {
-                            <li>
+                            <li class="@(log.Id == Model.EditingId ? "ht-editing" : null)">
                                 <div class="ht-date-chip"><span>@log.Date.ToString("MMM")</span><strong>@log.Date.Day</strong></div>
                                 <div class="flex-grow-1">
                                     <div class="fw-semibold">@log.Activity</div>
@@ -75,6 +75,7 @@
                                         @if (!string.IsNullOrWhiteSpace(log.Notes)) { <span>@log.Notes</span> }
                                     </div>
                                 </div>
+                                <partial name="_EditLink" model="log.Id" />
                                 <partial name="_DeleteButton" model='new DeleteButton("WorkoutLogs", "Delete", new() { ["id"] = log.Id.ToString() }, "Delete this workout entry?")' />
                             </li>
                         }

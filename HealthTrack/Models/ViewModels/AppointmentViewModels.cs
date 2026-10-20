@@ -24,8 +24,8 @@ public abstract class AppointmentSlotViewModel
 
 public class AppointmentRequestViewModel : AppointmentSlotViewModel
 {
-    [Required(ErrorMessage = "Please choose a trainer.")]
-    [Display(Name = "Trainer")]
+    [Required(ErrorMessage = "Please choose who you'd like to see.")]
+    [Display(Name = "Trainer or health professional")]
     public string TrainerId { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Please say what you'd like to discuss.")]
@@ -47,7 +47,7 @@ public class AppointmentEditViewModel : AppointmentSlotViewModel
 
 public class AppointmentsPageViewModel
 {
-    public bool IsTrainer { get; init; }
+    public bool IsProvider { get; init; }
     public AppointmentRequestViewModel Form { get; init; } = new();
     public IEnumerable<SelectListItem> Trainers { get; init; } = [];
     public IReadOnlyList<Appointment> Requests { get; init; } = [];
@@ -58,7 +58,7 @@ public class AppointmentsPageViewModel
 public class AppointmentDetailsViewModel
 {
     public required Appointment Appointment { get; init; }
-    public bool IsTrainer { get; init; }
+    public bool IsProvider { get; init; }
 }
 
 public class AppointmentEditPageViewModel

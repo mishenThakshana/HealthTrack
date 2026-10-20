@@ -1,0 +1,50 @@
+@model UserFormViewModel
+@{
+    ViewData["Title"] = "New user";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><a asp-action="Index">Users</a></li>
+            <li class="breadcrumb-item active" aria-current="page">New user</li>
+        </ol>
+    </nav>
+
+    <div class="ht-panel ht-form-panel mx-auto">
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="ht-icon"><i class="bi bi-person-plus"></i></div>
+            <div>
+                <h1 class="h4 mb-0">New user</h1>
+                <div class="text-muted small">Create an account for a client, trainer, health professional or administrator.</div>
+            </div>
+        </div>
+
+        <form asp-action="Create" method="post" novalidate>
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+            <partial name="_UserFields" model="Model" />
+            <div class="row g-2 mb-1">
+                <div class="col-sm-6">
+                    <label asp-for="Password" class="form-label"></label>
+                    <input asp-for="Password" class="form-control" autocomplete="new-password" />
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
+                <div class="col-sm-6">
+                    <label asp-for="ConfirmPassword" class="form-label"></label>
+                    <input asp-for="ConfirmPassword" class="form-control" autocomplete="new-password" />
+                    <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+                </div>
+            </div>
+            <p class="form-text mb-4">At least 8 characters, with an uppercase letter, a lowercase letter and a number. Share it with the user securely.</p>
+
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Create user</button>
+                <a class="btn btn-outline-primary" asp-action="Index">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

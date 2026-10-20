@@ -18,6 +18,7 @@
             <a class="btn btn-primary btn-sm" asp-controller="WorkoutLogs" asp-action="Index"><i class="bi bi-plus-lg"></i> Log workout</a>
             <a class="btn btn-outline-primary btn-sm" asp-controller="MealLogs" asp-action="Index"><i class="bi bi-plus-lg"></i> Log meal</a>
             <a class="btn btn-outline-primary btn-sm" asp-controller="Measurements" asp-action="Index"><i class="bi bi-plus-lg"></i> Measurement</a>
+            <a class="btn btn-outline-primary btn-sm" asp-controller="Progress" asp-action="Index"><i class="bi bi-graph-up"></i> Progress</a>
         </div>
     </div>
 
@@ -124,7 +125,29 @@
                     <a class="small" asp-controller="Appointments" asp-action="Index">@(Model.UpcomingAppointments.Count == 0 ? "Book" : "View all") <i class="bi bi-chevron-right"></i></a>
                 </div>
                 <partial name="_AppointmentList" model="Model.UpcomingAppointments"
-                         view-data='new ViewDataDictionary(ViewData) { ["IsTrainer"] = false, ["EmptyIcon"] = "bi-calendar", ["Empty"] = "You have no upcoming appointments." }' />
+                         view-data='new ViewDataDictionary(ViewData) { ["IsProvider"] = false, ["EmptyIcon"] = "bi-calendar", ["Empty"] = "You have no upcoming appointments." }' />
+            </div>
+            <div class="ht-panel mb-3">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-chat-left-text"></i> Latest feedback</h2>
+                    <a class="small" asp-controller="Progress" asp-action="Index" asp-fragment="feedback">@(Model.LatestFeedback.Count == 0 ? "Progress" : "View all") <i class="bi bi-chevron-right"></i></a>
+                </div>
+                @if (Model.LatestFeedback.Count == 0)
+                {
+                    <partial name="_EmptyState" model='new EmptyState("bi-chat-left", "No feedback yet. Your trainer can comment on your progress.")' />
+                }
+                else
+                {
+                    <ul class="list-unstyled ht-item-list mb-0">
+                        @foreach (var f in Model.LatestFeedback)
+                        {
+                            <li class="d-block">
+                                <div class="small text-muted mb-1"><span class="fw-semibold text-body">@f.AuthorName</span> · @f.CreatedAt.ToLocalTime().ToString("d MMM")</div>
+                                <div class="ht-prewrap ht-clamp">@f.Message</div>
+                            </li>
+                        }
+                    </ul>
+                }
             </div>
             <partial name="_ProfileCard" model="Model.Profile" />
         </div>

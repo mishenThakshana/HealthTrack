@@ -16,8 +16,8 @@ public static class AppointmentRules
     public static bool CanReschedule(Appointment a) =>
         a.Status is AppointmentStatus.Pending or AppointmentStatus.Approved && IsUpcoming(a);
 
-    public static bool CanCancel(Appointment a, bool isTrainer) =>
-        (a.Status == AppointmentStatus.Approved || (a.Status == AppointmentStatus.Pending && !isTrainer)) && IsUpcoming(a);
+    public static bool CanCancel(Appointment a, bool isProvider) =>
+        (a.Status == AppointmentStatus.Approved || (a.Status == AppointmentStatus.Pending && !isProvider)) && IsUpcoming(a);
 
     public static bool CanComplete(Appointment a) => a.Status == AppointmentStatus.Approved && !IsUpcoming(a);
 

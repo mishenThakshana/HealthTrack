@@ -1,0 +1,75 @@
+@model UsersIndexViewModel
+@using HealthTrack.Data
+@using HealthTrack.Helpers
+@{
+    ViewData["Title"] = "Users";
+    var roles = Roles.All.Select(r => new SelectListItem(Roles.DisplayName(r), r, r == Model.Role));
+}
+
+<div class="container py-4">
+    <div class="ht-dash-header">
+        <div>
+            <h1 class="h3 mb-1">Users</h1>
+            <p class="text-muted mb-0">Create accounts, change roles, reset passwords and disable access.</p>
+        </div>
+        <a class="btn btn-primary btn-sm" asp-action="Create"><i class="bi bi-person-plus"></i> New user</a>
+    </div>
+
+    <div class="ht-panel">
+        <form method="get" asp-action="Index" class="row g-2 mb-3" role="search">
+            <div class="col-sm-6 col-lg-5">
+                <label for="q" class="visually-hidden">Search</label>
+                <input id="q" name="q" value="@Model.Query" class="form-control form-control-sm" placeholder="Search by name or email" />
+            </div>
+            <div class="col-8 col-sm-4 col-lg-3">
+                <label for="role" class="visually-hidden">Role</label>
+                <select id="role" name="role" asp-items="roles" class="form-select form-select-sm">
+                    <option value="">All roles</option>
+                </select>
+            </div>
+            <div class="col-4 col-sm-2 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+                @if (Model.Query is not null || Model.Role is not null) { <a class="btn btn-sm btn-link" asp-action="Index">Clear</a> }
+            </div>
+        </form>
+
+        @if (Model.Users.Count == 0)
+        {
+            <partial name="_EmptyState" model='new EmptyState("bi-search", "No users match your search.")' />
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table ht-table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th class="d-none d-lg-table-cell">Trainer</th>
+                            <th class="text-end d-none d-md-table-cell">Joined</th>
+                            <th class="text-end d-none d-sm-table-cell">Last sign-in</th>
+                            <th class="text-end">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in Model.Users)
+                        {
+                            <tr>
+                                <td>
+                                    <a class="fw-semibold" asp-action="Edit" asp-route-id="@u.Id">@u.FullName</a>
+                                    <div class="small text-muted text-break">@u.Email</div>
+                                </td>
+                                <td><span class="badge rounded-pill bg-primary-subtle text-primary">@Roles.DisplayName(u.Role)</span></td>
+                                <td class="small d-none d-lg-table-cell">@(u.Role == Roles.Client ? u.TrainerName ?? "Unassigned" : "—")</td>
+                                <td class="text-end text-nowrap small d-none d-md-table-cell">@u.CreatedAt.ToLocalTime().ToString("d MMM yyyy")</td>
+                                <td class="text-end text-nowrap small d-none d-sm-table-cell">@(u.LastLoginAt?.ToLocalTime().ToString("d MMM, HH:mm") ?? "Never")</td>
+                                <td class="text-end"><span class="badge rounded-pill @AccountStatus.Badge(u.LockoutEnd)">@AccountStatus.Label(u.LockoutEnd)</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="small text-muted mt-3 mb-0">Showing @Model.Users.Count of @Model.Total users@(Model.Users.Count == 200 ? " (first 200)" : "").</p>
+        }
+    </div>
+</div>

@@ -1,0 +1,50 @@
+@model ProfessionalDashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+    var list = (string icon, string empty) => new ViewDataDictionary(ViewData) { ["IsProvider"] = true, ["EmptyIcon"] = icon, ["Empty"] = empty };
+}
+
+<div class="container py-4">
+    <div class="ht-dash-header">
+        <div>
+            <span class="badge rounded-pill bg-primary-subtle text-primary mb-2">Health professional</span>
+            <h1 class="h3 mb-1">Hi, @Model.Profile.FirstName</h1>
+            <p class="text-muted mb-0">Your consultations and requests at a glance.</p>
+        </div>
+        <a class="btn btn-primary btn-sm" asp-controller="Appointments" asp-action="Index"><i class="bi bi-calendar-check"></i> All appointments</a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-calendar-check", "Appointments today", Model.TodaysAppointments.Count.ToString(), Model.TodaysAppointments.FirstOrDefault(a => a.EndsAt > DateTime.Now) is { } next ? $"Next at {next.StartsAt:HH:mm}" : Model.TodaysAppointments.Count == 0 ? "None scheduled" : "All done for today")' /></div>
+        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-inbox", "Requests", Model.PendingCount.ToString(), "Waiting for your reply")' /></div>
+        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-check2-circle", "Completed", Model.CompletedThisMonth.ToString(), "This month")' /></div>
+        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-people", "Clients seen", Model.ClientsSeen.ToString(), "All time")' /></div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="ht-panel mb-3">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-calendar-day"></i> Today</h2>
+                </div>
+                <partial name="_AppointmentList" model="Model.TodaysAppointments" view-data='list("bi-calendar", "Nothing scheduled for today.")' />
+            </div>
+            <div class="ht-panel">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-calendar-week"></i> Coming up</h2>
+                </div>
+                <partial name="_AppointmentList" model="Model.Upcoming" view-data='list("bi-calendar", "No upcoming appointments after today.")' />
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="ht-panel mb-3">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-inbox"></i> Appointment requests</h2>
+                    <a class="small" asp-controller="Appointments" asp-action="Index">All <i class="bi bi-chevron-right"></i></a>
+                </div>
+                <partial name="_AppointmentList" model="Model.AppointmentRequests" view-data='list("bi-inbox", "No appointment requests to review.")' />
+            </div>
+            <partial name="_ProfileCard" model="Model.Profile" />
+        </div>
+    </div>
+</div>

@@ -1,0 +1,98 @@
+@model UserEditPageViewModel
+@using HealthTrack.Data
+@using HealthTrack.Helpers
+@{
+    ViewData["Title"] = Model.Form.FullName;
+    var disabled = AccountStatus.IsDisabled(Model.LockoutEnd);
+    var locked = AccountStatus.IsLockedOut(Model.LockoutEnd);
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><a asp-action="Index">Users</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@Model.Form.FullName</li>
+        </ol>
+    </nav>
+
+    <div class="ht-dash-header">
+        <div>
+            <span class="badge rounded-pill @AccountStatus.Badge(Model.LockoutEnd) mb-2">@AccountStatus.Label(Model.LockoutEnd)</span>
+            <h1 class="h3 mb-1">@Model.Form.FullName</h1>
+            <p class="text-muted mb-0">
+                Joined @Model.CreatedAt.ToLocalTime().ToString("d MMM yyyy") · last sign-in @(Model.LastLoginAt?.ToLocalTime().ToString("d MMM yyyy, HH:mm") ?? "never")
+                @if (Model.TrainerName is not null) { <span> · trainer @Model.TrainerName</span> }
+            </p>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="ht-panel">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-person"></i> Profile and role</h2>
+                </div>
+                <form asp-action="Edit" asp-route-id="@Model.Id" method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+                    <partial name="_UserFields" for="Form" view-data='new ViewDataDictionary(ViewData) { ["RoleLocked"] = Model.IsSelf }' />
+                    @if (!Model.IsSelf)
+                    {
+                        <p class="form-text">Changing the role signs the user out. Trainers must have no assigned clients, and nobody can have upcoming appointments.</p>
+                    }
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save changes</button>
+                </form>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="ht-panel mb-3">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-key"></i> Reset password</h2>
+                </div>
+                <form asp-action="ResetPassword" asp-route-id="@Model.Id" method="post" novalidate>
+                    <div class="mb-2">
+                        <label asp-for="Reset.NewPassword" class="form-label"></label>
+                        <input asp-for="Reset.NewPassword" class="form-control" autocomplete="new-password" />
+                        <span asp-validation-for="Reset.NewPassword" class="text-danger small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Reset.ConfirmPassword" class="form-label"></label>
+                        <input asp-for="Reset.ConfirmPassword" class="form-control" autocomplete="new-password" />
+                        <span asp-validation-for="Reset.ConfirmPassword" class="text-danger small"></span>
+                    </div>
+                    <button type="submit" class="btn btn-outline-primary">Set new password</button>
+                </form>
+            </div>
+
+            <div class="ht-panel">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-shield-lock"></i> Access</h2>
+                </div>
+                @if (Model.IsSelf)
+                {
+                    <p class="text-muted small mb-0">This is your account. You can't disable it.</p>
+                }
+                else if (disabled || locked)
+                {
+                    <p class="small text-muted">
+                        @(disabled ? "This account is disabled, so the user can't sign in." : $"Locked after failed sign-ins until {Model.LockoutEnd!.Value.ToLocalTime():HH:mm}.")
+                    </p>
+                    <form asp-action="SetEnabled" asp-route-id="@Model.Id" asp-route-enabled="true" method="post">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-unlock"></i> @(disabled ? "Enable account" : "Unlock now")</button>
+                    </form>
+                }
+                else
+                {
+                    <p class="small text-muted">Disabling signs the user out and stops them signing in. Their data is kept.</p>
+                    <form asp-action="SetEnabled" asp-route-id="@Model.Id" asp-route-enabled="false" method="post"
+                          data-confirm="Disable @Model.Form.FullName's account?">
+                        <button type="submit" class="btn btn-outline-danger"><i class="bi bi-slash-circle"></i> Disable account</button>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

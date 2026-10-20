@@ -47,6 +47,7 @@ HealthTrack is a digital platform designed to help individuals track and improve
 | Database | Microsoft SQL Server 2022 (Docker) |
 | ORM | Entity Framework Core 10 (`Microsoft.EntityFrameworkCore.SqlServer`) |
 | Authentication | ASP.NET Core Identity |
+| Charts | Chart.js 4.4.1 (served from `wwwroot/lib`) |
 | Frontend | Razor Views, Bootstrap, jQuery |
 
 ## Prerequisites
@@ -148,6 +149,7 @@ In Development, these accounts are created on startup if they don't already exis
 | Admin | `admin@healthtrack.local` | `Admin@12345` | System Administrator |
 | Trainer | `trainer@healthtrack.local` | `Trainer@12345` | Alex Morgan |
 | Client | `client@healthtrack.local` | `Client@12345` | Jamie Silva |
+| Health professional | `doctor@healthtrack.local` | `Doctor@12345` | Dr. Sam Patel |
 
 The seeded client is assigned to the seeded trainer, so you can sign in as the trainer and create plans for Jamie straight away.
 
@@ -155,20 +157,32 @@ These are for local development only. Don't use them in production.
 
 ## Appointments
 
-- Clients request a consultation from the Appointments page by choosing a trainer (their assigned trainer is preselected), date, time, length (30, 45, 60 or 90 minutes), type (in person, video call or phone call) and what they'd like to discuss.
+- Clients request a consultation from the Appointments page by choosing a trainer or health professional (their assigned trainer is preselected), date, time, length (30, 45, 60 or 90 minutes), type (in person, video call or phone call) and what they'd like to discuss.
 - Appointments must start in the future, no more than 90 days ahead, and fit between 06:00 and 21:00.
 - A request can't overlap the trainer's approved appointments or the client's own pending or approved ones.
-- Trainers approve or decline requests, reschedule them (which also confirms them), add a location or meeting link and a note, cancel approved ones, and mark past ones as completed.
+- Trainers and health professionals approve or decline requests, reschedule them (which also confirms them), add a location or meeting link and a note, cancel approved ones, and mark past ones as completed.
 - Clients can cancel their own pending or approved appointments before they start. Pending requests that are never answered show as "Expired" once their start time passes.
 - Times are stored in the server's local time.
+
+## Progress tracking & analytics
+
+- **Progress** (`/Progress`): clients see charts of weight, BMI, body fat, resting heart rate, workout minutes, calories burned and calories eaten (against their diet plan's target) for the last 30 days, 90 days, 6 months or 12 months, plus their top activities. Each chart has a "Show data" table.
+- **Feedback**: a client's trainer, and health professionals with an approved or completed appointment with the client, can open the client's Progress page and leave feedback. Clients see it on their Progress page and dashboard. Authors can delete their own feedback.
+- **Reports** (`/Reports`, trainers and admins): client performance (workouts, minutes, calories, weight change, active days, engagement level), engagement over time, appointments by status, popular plan exercises and most logged activities. Trainers see their own clients; admins see everyone. Download as CSV.
+- **Admin dashboard**: active users this week, system usage over the last 14 days, totals, and each user's last sign-in.
+
+## User management
+
+Admins manage accounts at `/Users`: search and filter by role, create users with any role (including other admins), edit profiles, change roles, reset passwords, and disable or re-enable accounts. Admins can't change their own role or disable themselves. A trainer's role can't change while clients are assigned to them, and nobody's role can change while they have upcoming appointments. Role changes, password resets and disabling take effect within a minute.
 
 ## Who can do what
 
 | Role | Pages | What they can do |
 |------|-------|------------------|
-| Admin | Dashboard, Assignments | See user statistics and assign each client to a trainer |
-| Trainer | Dashboard, Clients, Plans, Appointments | See assigned clients' measurements and logs; create, edit and delete workout and diet plans for them; approve, decline, reschedule, cancel and complete appointment requests |
-| Client | Dashboard, Plans, Appointments, Track | View plans from their trainer; book consultations with a trainer and cancel them; log workouts, meals and measurements (weight, height, body fat, resting heart rate) |
+| Admin | Dashboard, Users, Assignments, Reports | See user activity and system usage; create and manage accounts; assign each client to a trainer; run reports across all clients |
+| Trainer | Dashboard, Clients, Plans, Appointments, Reports | See assigned clients' measurements, logs and progress charts; give feedback; create, edit and delete workout and diet plans for them; approve, decline, reschedule, cancel and complete appointment requests; run reports on their clients |
+| Health professional | Dashboard, Appointments | Approve, decline, reschedule, cancel and complete consultation requests; view progress of, and give feedback to, clients they have an approved or completed appointment with |
+| Client | Dashboard, Plans, Appointments, Track | View plans from their trainer; book consultations with a trainer or health professional and cancel them; log, edit and delete workouts, meals and measurements (weight, height, body fat, resting heart rate); see progress charts and feedback |
 
 ## Project Structure
 
@@ -179,11 +193,11 @@ HealthTrack/
 └── HealthTrack/
     ├── Controllers/          # MVC controllers
     ├── Data/                 # DbContext, roles, startup seeding
-    ├── Helpers/              # Date, BMI and appointment rule helpers
+    ├── Helpers/              # Date, period, BMI, account status and appointment rule helpers
     ├── Migrations/           # EF Core migrations (SQL Server)
     ├── Models/               # Domain and view models
     ├── Views/                # Razor views
-    ├── wwwroot/              # Static files (css, js, lib)
+    ├── wwwroot/              # Static files (css, js, lib incl. Chart.js)
     ├── Properties/           # Launch settings
     ├── appsettings.json      # App configuration & connection string
     └── Program.cs            # App startup and middleware
@@ -199,6 +213,7 @@ HealthTrack/
 - [x] Role-based dashboards
 - [x] Workout & diet management
 - [x] Appointment system
-- [ ] Progress tracking & analytics
+- [x] Progress tracking & analytics
+- [x] Health professional role, admin user management, editable log entries
 - [ ] Notifications
 - [ ] Security hardening & data protection
