@@ -47,13 +47,14 @@ HealthTrack is a digital platform designed to help individuals track and improve
 | Database | Microsoft SQL Server 2022 (Docker) |
 | ORM | Entity Framework Core 10 (`Microsoft.EntityFrameworkCore.SqlServer`) |
 | Authentication | ASP.NET Core Identity |
+| Email | MailKit over SMTP (Mailpit in development) |
 | Charts | Chart.js 4.4.1 (served from `wwwroot/lib`) |
 | Frontend | Razor Views, Bootstrap, jQuery |
 
 ## Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- [Docker](https://www.docker.com/products/docker-desktop/) running SQL Server 2022 (or any SQL Server 2019+ instance)
+- [Docker](https://www.docker.com/products/docker-desktop/) running SQL Server 2022 (or any SQL Server 2019+ instance) and [Mailpit](https://mailpit.axllent.org/) for test emails
 - An IDE: Visual Studio 2022+, JetBrains Rider, or VS Code with the C# Dev Kit
 
 Verify the SDK:
@@ -104,7 +105,17 @@ User secrets are only loaded in the Development environment; elsewhere supply `C
 
 You don't need to create the database — the first migration creates `HealthTrack` automatically.
 
-### 4. Apply database migrations
+### 4. Start Mailpit for emails
+
+HealthTrack sends confirmation, password reset and notification emails over SMTP. In development they go to Mailpit, a local test inbox, so nothing reaches real addresses:
+
+```bash
+docker run -d --name mailpit --restart unless-stopped -p 1025:1025 -p 8025:8025 axllent/mailpit:v1.31.6
+```
+
+Open http://localhost:8025 to read the emails. An existing container can be started again with `docker start mailpit`. If Mailpit isn't running, the app still works; emails are retried and then dropped with an error in the log.
+
+### 5. Apply database migrations
 
 Migrations also run automatically on startup, which seeds the roles and, in Development, one account per role (see [Seeded accounts](#seeded-accounts)). To apply them manually:
 
@@ -118,7 +129,7 @@ To create a new migration after changing models:
 dotnet ef migrations add <MigrationName> --project HealthTrack
 ```
 
-### 5. Run the application
+### 6. Run the application
 
 ```bash
 dotnet run --project HealthTrack
@@ -171,11 +182,33 @@ These are for local development only. Don't use them in production.
 - **Reports** (`/Reports`, trainers and admins): client performance (workouts, minutes, calories, weight change, active days, engagement level), engagement over time, appointments by status, popular plan exercises and most logged activities. Trainers see their own clients; admins see everyone. Download as CSV.
 - **Admin dashboard**: active users this week, system usage over the last 14 days, totals, and each user's last sign-in.
 
+## Emails and notifications
+
+- **Account emails:** new accounts get a confirmation link. Until it's confirmed, a banner offers to resend it, and no notification emails are sent. Signing in doesn't need a confirmed email. "Forgot password?" on the sign-in page emails a reset link; it always shows the same message, so it doesn't reveal which emails have accounts. Changing your email asks you to confirm the new address and tells the old one. Password changes and resets send a security notice.
+- **In-app notifications:** the bell in the top bar shows unread notifications. `/Notifications` lists them, with "Mark all as read" and "Clear read". Opening one marks it read and takes you to the related page.
+- **What creates a notification:**
+  - Appointments: requested, approved, declined, rescheduled, cancelled and completed (sent to the other person).
+  - A new workout or diet plan, or a plan moved to you.
+  - New progress feedback.
+  - Being assigned a trainer, or a new client.
+- **Reminders** (a background check every few minutes):
+  - Appointments: 24 hours before an approved appointment, to the client and the provider.
+  - Workouts: from 17:00 if your active workout plan has exercises today and you haven't logged a workout.
+  - Meals: from 20:00 if you have an active diet plan and haven't logged a meal today.
+  - Each reminder is sent once.
+- **Preferences:** under My account → Notifications, choose which emails you get (appointments, reminders, updates) and turn workout or meal reminders off.
+- **Configuration** (`appsettings.json`):
+  - `Email`: SMTP host, port, SSL, optional username/password, from address, and `AppUrl` (used for links in emails sent by the background service).
+  - `Reminders`: check interval, hours before an appointment, workout and meal times, and how many hours after those times reminders can still go out.
+  - For a real SMTP provider, keep credentials in user secrets (`Email:UserName`, `Email:Password`).
+
 ## User management
 
 Admins manage accounts at `/Users`: search and filter by role, create users with any role (including other admins), edit profiles, change roles, reset passwords, and disable or re-enable accounts. Admins can't change their own role or disable themselves. A trainer's role can't change while clients are assigned to them, and nobody's role can change while they have upcoming appointments. Role changes, password resets and disabling take effect within a minute.
 
 ## Who can do what
+
+Everyone can edit their own profile and change their password from **My account** in the account menu.
 
 | Role | Pages | What they can do |
 |------|-------|------------------|
@@ -215,5 +248,6 @@ HealthTrack/
 - [x] Appointment system
 - [x] Progress tracking & analytics
 - [x] Health professional role, admin user management, editable log entries
-- [ ] Notifications
+- [x] My account page (profile and password)
+- [x] Emails (Mailpit) and notifications
 - [ ] Security hardening & data protection

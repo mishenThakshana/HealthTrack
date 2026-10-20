@@ -1,5 +1,6 @@
 using HealthTrack.Data;
 using HealthTrack.Models;
+using HealthTrack.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,6 +34,14 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 
 builder.Services.AddControllersWithViews();
+
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.Section));
+builder.Services.Configure<ReminderOptions>(builder.Configuration.GetSection(ReminderOptions.Section));
+builder.Services.AddSingleton<EmailQueue>();
+builder.Services.AddHostedService<EmailSenderService>();
+builder.Services.AddScoped<AccountEmails>();
+builder.Services.AddScoped<NotificationService>();
+builder.Services.AddHostedService<ReminderService>();
 
 var app = builder.Build();
 

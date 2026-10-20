@@ -16,6 +16,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<HealthMeasurement> HealthMeasurements => Set<HealthMeasurement>();
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<ProgressFeedback> ProgressFeedback => Set<ProgressFeedback>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     public IQueryable<ApplicationUser> UsersInRole(string role) =>
         Users.Where(u => UserRoles.Any(ur => ur.UserId == u.Id && Roles.Any(r => r.Id == ur.RoleId && r.Name == role)));
@@ -29,6 +30,22 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany()
             .HasForeignKey(u => u.TrainerId)
             .OnDelete(DeleteBehavior.NoAction);
+
+        builder.Entity<ApplicationUser>(u =>
+        {
+            u.Property(x => x.EmailAppointments).HasDefaultValue(true).HasSentinel(true);
+            u.Property(x => x.EmailReminders).HasDefaultValue(true).HasSentinel(true);
+            u.Property(x => x.EmailUpdates).HasDefaultValue(true).HasSentinel(true);
+            u.Property(x => x.RemindWorkouts).HasDefaultValue(true).HasSentinel(true);
+            u.Property(x => x.RemindMeals).HasDefaultValue(true).HasSentinel(true);
+        });
+
+        builder.Entity<Notification>(n =>
+        {
+            n.Property(x => x.Type).HasConversion<string>().HasMaxLength(30);
+            n.HasIndex(x => new { x.UserId, x.ReadAt, x.CreatedAt });
+            n.HasIndex(x => new { x.UserId, x.Key }).IsUnique().HasFilter("[Key] IS NOT NULL");
+        });
 
         builder.Entity<WorkoutPlan>(plan =>
         {

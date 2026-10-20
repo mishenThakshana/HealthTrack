@@ -688,3 +688,80 @@ main {
   min-width: 2.5rem;
   text-align: right;
 }
+
+.ht-bell {
+  position: relative;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 1px solid rgba(255, 255, 255, .35);
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, .12);
+  color: #fff;
+  font-size: 1.1rem;
+  transition: background-color .15s;
+}
+
+.ht-bell:hover, .ht-bell[aria-expanded="true"] {
+  background-color: rgba(255, 255, 255, .22);
+}
+
+.ht-bell:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.ht-bell-count {
+  position: absolute;
+  top: -.3rem;
+  right: -.3rem;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 .3rem;
+  border-radius: 1rem;
+  background-color: #fff;
+  color: var(--ht-orange-dark);
+  font-size: .68rem;
+  font-weight: 700;
+  line-height: 1.15rem;
+}
+
+.ht-bell-menu {
+  width: min(22rem, calc(100vw - 2rem));
+}
+
+.ht-bell-item {
+  display: flex;
+  gap: .6rem;
+  align-items: flex-start;
+  white-space: normal;
+}
+
+.ht-bell-item > .bi {
+  margin-top: .15rem;
+}
+
+.ht-bell-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ht-unread {
+  background-color: var(--ht-orange-light);
+}
+
+.ht-item-list > li.ht-unread {
+  margin: 0 -.5rem;
+  padding-left: .5rem;
+  padding-right: .5rem;
+  border-radius: .5rem;
+}
+
+.ht-icon.ht-icon-sm {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  font-size: 1rem;
+  border-radius: .6rem;
+}

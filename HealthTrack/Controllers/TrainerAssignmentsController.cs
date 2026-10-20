@@ -1,5 +1,7 @@
 using HealthTrack.Data;
+using HealthTrack.Models;
 using HealthTrack.Models.ViewModels;
+using HealthTrack.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +9,10 @@ using Microsoft.EntityFrameworkCore;
 namespace HealthTrack.Controllers;
 
 [Authorize(Roles = Roles.Admin)]
-public class TrainerAssignmentsController(ApplicationDbContext db, ILogger<TrainerAssignmentsController> logger) : Controller
+public class TrainerAssignmentsController(
+    ApplicationDbContext db,
+    NotificationService notifications,
+    ILogger<TrainerAssignmentsController> logger) : Controller
 {
     public async Task<IActionResult> Index()
     {
@@ -40,9 +45,18 @@ public class TrainerAssignmentsController(ApplicationDbContext db, ILogger<Train
                 return BadRequest();
         }
 
+        var changed = client.TrainerId != trainerId;
         client.TrainerId = trainerId;
         await db.SaveChangesAsync();
         logger.LogInformation("Client {ClientId} assigned to trainer {TrainerId}", clientId, trainerId ?? "none");
+
+        if (changed && trainerId is not null)
+        {
+            await notifications.NotifyAsync(client.Id, NotificationType.TrainerAssigned, $"{trainerName} is now your trainer",
+                $"{trainerName} will look after your workout and diet plans and can see your progress.", "/Dashboard");
+            await notifications.NotifyAsync(trainerId, NotificationType.TrainerAssigned, "New client assigned",
+                $"{client.FullName} has been assigned to you.", $"/Clients/Details/{client.Id}");
+        }
 
         TempData["Success"] = trainerName is null
             ? $"{client.FullName} no longer has a trainer."

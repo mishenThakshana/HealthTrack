@@ -1,6 +1,7 @@
 using HealthTrack.Data;
 using HealthTrack.Models;
 using HealthTrack.Models.ViewModels;
+using HealthTrack.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace HealthTrack.Controllers;
 
 [Authorize(Roles = Roles.Client + "," + Roles.Trainer)]
-public class DietPlansController(ApplicationDbContext db, UserManager<ApplicationUser> userManager) : Controller
+public class DietPlansController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, NotificationService notifications) : Controller
 {
     private string UserId => userManager.GetUserId(User)!;
     private bool IsTrainer => User.IsInRole(Roles.Trainer);
@@ -65,6 +66,7 @@ public class DietPlansController(ApplicationDbContext db, UserManager<Applicatio
         Apply(model, plan);
         db.DietPlans.Add(plan);
         await db.SaveChangesAsync();
+        await NotifyClientAsync(plan);
 
         TempData["Success"] = "Diet plan created. Now add some meals.";
         return RedirectToAction(nameof(Details), new { id = plan.Id });
@@ -107,8 +109,11 @@ public class DietPlansController(ApplicationDbContext db, UserManager<Applicatio
             return View("PlanForm", model);
         }
 
+        var previousClient = plan.ClientId;
         Apply(model, plan);
         await db.SaveChangesAsync();
+        if (plan.ClientId != previousClient)
+            await NotifyClientAsync(plan);
 
         TempData["Success"] = "Diet plan updated.";
         return RedirectToAction(nameof(Details), new { id });
@@ -175,6 +180,13 @@ public class DietPlansController(ApplicationDbContext db, UserManager<Applicatio
             .Include(p => p.Trainer)
             .Include(p => p.Meals)
             .FirstOrDefaultAsync(p => p.Id == id);
+
+    private async Task NotifyClientAsync(DietPlan plan)
+    {
+        var trainer = await db.Users.Where(u => u.Id == UserId).Select(u => u.FullName).FirstAsync();
+        await notifications.NotifyAsync(plan.ClientId, NotificationType.PlanAssigned, "New diet plan",
+            $"{trainer} created the diet plan “{plan.Title}” for you.", $"/DietPlans/Details/{plan.Id}");
+    }
 
     private static void Apply(PlanFormViewModel model, DietPlan plan)
     {

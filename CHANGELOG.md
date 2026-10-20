@@ -2,6 +2,117 @@
 
 A log of every task completed on HealthTrack, newest first.
 
+## 2026-10-20 — Emails (Mailpit) and notifications
+
+Commit: not committed yet
+
+### Added
+- **Mailpit** test inbox, running in Docker as `mailpit`. SMTP is on `localhost:1025` and the web inbox is http://localhost:8025. The container restarts with Docker.
+- **Email sending** (`Services/`):
+  - `EmailOptions`: the `Email` config section (Enabled, Host, Port, UseSsl, UserName, Password, FromAddress, FromName, AppUrl).
+  - `EmailQueue`: an unbounded channel.
+  - `EmailSenderService`: a hosted service that sends queued messages with MailKit, so requests never wait on SMTP. It makes up to 3 attempts with 5s/10s back-off, then logs an error. When `Enabled` is false it only logs.
+  - `EmailTemplates.Render`: an orange-branded HTML email with a plain-text version (heading, greeting, paragraphs, optional button plus a copyable link, footer). All content is HTML-encoded.
+  - Packages: `MailKit` 4.18.1, and `System.Security.Cryptography.Pkcs` 10.0.13 pinned to fix the moderate/high advisories in the 10.0.0 version MimeKit pulls in.
+- **Account emails** (`AccountEmails`, `AccountController`):
+  - **Confirmation:** a confirmation email on registration. `ConfirmEmail` (Base64Url-encoded token) shows "Email confirmed" or "Confirmation failed". `ResendConfirmation` (POST). A site-wide banner for signed-in users whose email isn't confirmed, with a "Resend link" button. Confirmation is not required to sign in, so existing accounts (such as `johndoe@gmail.com`) aren't locked out; unconfirmed addresses just don't get notification emails.
+  - **Forgot password / reset password:** `ForgotPassword` always shows the same "If an account exists…" message (no account enumeration) and doesn't email disabled accounts. `ResetPassword` takes the emailed link. Invalid or reused tokens get "invalid or has expired". A successful reset clears failed sign-in attempts and redirects to sign-in. There's a "Forgot password?" link on the sign-in page.
+  - **Email change** (My account): the new address becomes unconfirmed and gets a confirmation link, and the old address gets a "your email was changed" notice.
+  - **Security notices:** "Your password was changed" after a password change, a reset, or an admin reset, sent only to confirmed addresses.
+- **Notifications:**
+  - `Notification` entity: user, `Type` (`NotificationType` enum stored as a string), title (150), message (500), link (300), `Key` (100, for de-duplicating reminders), `CreatedAt`, `ReadAt`. Indexes on `(UserId, ReadAt, CreatedAt)` and a filtered unique index on `(UserId, Key)`.
+  - `NotificationService.NotifyAsync`: skips existing keys, saves the in-app notification and queues an email when the user's email is confirmed and their preference for that category allows it. A unique-key race is caught. Categories: Appointments, Reminders, Updates. Each type has an icon.
+  - Event notifications:
+    - Appointments: requested (to the provider), approved, declined (with reason), rescheduled/updated (with location), completed (to the client), and cancelled (to the other party, with the provider's reason).
+    - A new workout or diet plan, or a plan moved to another client (to the client).
+    - Progress feedback (to the client).
+    - Trainer assignment (to the client and the trainer).
+  - `ReminderService` (hosted, `Reminders` config section: CheckIntervalMinutes 5, AppointmentHoursBefore 24, WorkoutTime 17:00, MealTime 20:00, WindowHours 4):
+    - Appointment reminders to both people for approved appointments starting within 24 hours. The key includes the start time, so a rescheduled appointment gets a fresh reminder.
+    - Workout reminders when the active plan has exercises for today (or any day) and nothing is logged.
+    - Meal reminders when there's an active diet plan and no meals are logged today.
+    - Reminders only go out inside the window after the configured time, and each key is used once a day.
+  - **Bell** in the top bar (`NotificationBellViewComponent`): unread count (shows 9+ above nine) and a dropdown of the latest 5 with icon, title, two-line message, time ago, and "See all".
+  - `NotificationsController` (`/Notifications`): the latest 50, unread highlighted with a "New" badge. `Open/{id}` marks it read and redirects to the link (local URLs only; other users' notifications → 404). "Mark all as read" (`ExecuteUpdate`), "Clear read" (`ExecuteDelete`), and a Settings link.
+  - **Preferences** on `ApplicationUser`: `EmailAppointments`, `EmailReminders`, `EmailUpdates`, `RemindWorkouts`, `RemindMeals`. These default to true in the database for existing rows; `HasSentinel(true)` makes sure EF still saves `false`. My account has a **Notifications** panel with switches: clients get all five; trainers get appointments plus "New clients assigned to me"; professionals get appointments; admins don't see the panel.
+- `Helpers/TimeAgo.cs`, `Models/ViewModels/NotificationViewModels.cs`, and new views `Account/ForgotPassword`, `Account/ResetPassword`, `Account/ConfirmEmail`, `Notifications/Index`, `Shared/Components/NotificationBell/Default`.
+- Migration `20261020074032_Notifications`.
+
+### Changed
+- `appsettings.json`: the connection string password is back to the `YOUR_PASSWORD` placeholder. The real password had been committed in `ba40a85`; user secrets already provide it in Development. Added the `Email` and `Reminders` sections.
+- `_LoginPartial`: the bell and account menu are now grouped together. `_Layout`: the email-confirmation banner.
+- Registration success message mentions the confirmation email.
+- `AppointmentsController`, `WorkoutPlansController`, `DietPlansController`, `ProgressController`, `TrainerAssignmentsController`, `UsersController`: inject `NotificationService` / `AccountEmails`.
+- `site.css`: `.ht-bell`, `.ht-bell-count`, `.ht-bell-menu`, `.ht-bell-item`, `.ht-bell-text`, `.ht-unread`, `.ht-icon-sm`.
+- README:
+  - Mailpit in prerequisites and a new step 4 in Getting Started.
+  - Email in the tech stack.
+  - A new "Emails and notifications" section.
+  - Progress ticked.
+
+### Environment / verification
+- Build: succeeded with 0 warnings and 0 errors. The migration applied on startup.
+- Ran on port 5299 with `Reminders__CheckIntervalMinutes=1`, `WorkoutTime`/`MealTime=00:00`, `WindowHours=23` and `Email__AppUrl=http://localhost:5299`. Emails were checked through the Mailpit API.
+  - **Account emails** (temporary client `t2@healthtrack.local`):
+    - Registration sends a confirmation email and shows the banner.
+    - A bad confirmation code → "Confirmation failed". Resend → a new email; the link → "Email confirmed" and the banner disappears.
+    - Forgot password for an unknown and a known email shows the same page, and only the known one gets an email.
+    - A bogus token and a reused token → "invalid or has expired". A valid reset → the old password fails and the new one works.
+    - A password change sends the notice (confirmed address only).
+    - An email change sends "email was changed" to the old address and a confirmation to the new one, and shows the banner and "Not confirmed yet".
+  - **Notifications:**
+    - Admin assigning the trainer → the client and trainer are notified and emailed.
+    - Trainer creating a plan → the client is notified.
+    - Booking → the trainer gets "New appointment request". Approving → the client gets "Appointment approved".
+    - Within a minute the reminder service sent "Upcoming appointment" to both. Later ticks didn't duplicate it (one row per key).
+    - The seeded client got a real workout reminder from the existing plan.
+    - With `EmailUpdates` off, feedback created an in-app notification but no email. The client cancelling → the trainer was emailed.
+    - The bell showed the unread count and the latest items. `Open` redirected to `/Progress#feedback` and marked the item read; the trainer opening the client's notification → 404. Mark all read → 0 unread and no badge. Clear read → empty.
+    - Preference switches saved `false` correctly (checked in the database).
+- Screenshots: the confirmation email as rendered by Mailpit (700px), the Notifications page with the banner and bell (1200px), and the phone header at 380px.
+- **Cleanup:**
+  - Deleted the temporary user (`t2`, renamed `t3`), its plan, the appointment, all notifications and feedback, and reset those identity seeds. The `WorkoutPlans` seed was reset to the current maximum.
+  - Emptied the Mailpit inbox.
+  - Stopped only the port-5299 process.
+  - Your existing plan ("3 months workout plan") and accounts are untouched.
+
+### Notes
+- The old commit `ba40a85` (already on GitHub) still contains the real SQL password. Change the SA password, or rewrite history if that matters for this repo.
+- Reminders use the server's local time, like the rest of the app.
+- Emails are queued in memory, so anything still queued is lost if the app stops.
+- For a real provider, set `Email:Host`, `Port`, `UseSsl` and credentials in user secrets or environment variables, and `Email:AppUrl` to the public URL.
+
+## 2026-10-20 — My account page
+
+Commit: not committed yet
+
+### Added
+- **My account** (`/Account/Manage`, any signed-in user):
+  - The header shows your role, member-since date and, for clients, your trainer.
+  - **Profile form** (`UpdateProfile`): full name, email, date of birth and gender, with the same validation as registration.
+    - Changing your email needs your current password, and the email is also your username. A duplicate email shows "already taken".
+    - The sign-in cookie is refreshed after saving, so you stay signed in.
+  - **Change password form** (`ChangePassword`): current, new and confirm, using Identity's `ChangePasswordAsync` so the password rules apply. A wrong current password shows "Your current password is incorrect." You stay signed in afterwards.
+  - Both forms log to the app log (`User {UserId} changed their email/password`).
+- `Models/ViewModels/ManageAccountViewModels.cs` (`ProfileFormViewModel`, `ChangePasswordViewModel`, `ManageAccountViewModel`) and `Views/Account/Manage.cshtml`.
+
+### Changed
+- The account dropdown has a **My account** item (`bi-person-gear`).
+- The dashboard profile card has an **Edit** link.
+- README: "Who can do what" mentions the account page.
+
+### Environment / verification
+- Build: succeeded with 0 warnings and 0 errors. No migration.
+- Curl on port 5299 with a temporary registered client (`t1@healthtrack.local`):
+  - Signed out → Login. The form prefills the profile.
+  - Email change without, or with a wrong, current password → error. Changing to `client@healthtrack.local` → "already taken". A future date of birth and gender `Robot` → errors.
+  - Name, date of birth and gender saved. Email changed to `t1b@…` with the password, and still signed in.
+  - Password change: a wrong current password → error, a weak password → rules error, a valid change → still signed in.
+  - Sign-in with the old email → fails. The new email with the old password → fails. The new email with the new password → works.
+  - Trainer, professional and admin each get 200 on the page.
+- Screenshot of the page at 1200px.
+- **Cleanup:** deleted the temporary user and stopped only the port-5299 process.
+
 ## 2026-10-20 — Progress tracking & analytics, plus earlier gaps
 
 Commit: not committed yet

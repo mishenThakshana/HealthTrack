@@ -14,33 +14,41 @@
         .Select(part => char.ToUpperInvariant(part[0])));
     var role = Roles.All.FirstOrDefault(User.IsInRole) is { } r ? Roles.DisplayName(r) : "Member";
 
-    <div class="dropdown ms-auto order-lg-last">
-        <button class="ht-user-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <span class="ht-avatar">@initials</span>
-            <span class="ht-user-text d-none d-md-flex">
-                <span class="ht-user-name">@user.FullName</span>
-                <span class="ht-user-role">@role</span>
-            </span>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end ht-user-menu">
-            <li class="px-3 pt-2 pb-1">
-                <div class="fw-semibold">@user.FullName</div>
-                <div class="small text-muted text-break">@user.Email</div>
-            </li>
-            <li><hr class="dropdown-divider" /></li>
-            <li>
-                <a class="dropdown-item" asp-controller="Dashboard" asp-action="Index">
-                    <i class="bi bi-speedometer2"></i> Dashboard
-                </a>
-            </li>
-            <li>
-                <form asp-controller="Account" asp-action="Logout" method="post">
-                    <button type="submit" class="dropdown-item">
-                        <i class="bi bi-box-arrow-right"></i> Sign out
-                    </button>
-                </form>
-            </li>
-        </ul>
+    <div class="d-flex align-items-center gap-2 ms-auto order-lg-last">
+        @await Component.InvokeAsync("NotificationBell")
+        <div class="dropdown">
+            <button class="ht-user-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="ht-avatar">@initials</span>
+                <span class="ht-user-text d-none d-md-flex">
+                    <span class="ht-user-name">@user.FullName</span>
+                    <span class="ht-user-role">@role</span>
+                </span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end ht-user-menu">
+                <li class="px-3 pt-2 pb-1">
+                    <div class="fw-semibold">@user.FullName</div>
+                    <div class="small text-muted text-break">@user.Email</div>
+                </li>
+                <li><hr class="dropdown-divider" /></li>
+                <li>
+                    <a class="dropdown-item" asp-controller="Dashboard" asp-action="Index">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" asp-controller="Account" asp-action="Manage">
+                        <i class="bi bi-person-gear"></i> My account
+                    </a>
+                </li>
+                <li>
+                    <form asp-controller="Account" asp-action="Logout" method="post">
+                        <button type="submit" class="dropdown-item">
+                            <i class="bi bi-box-arrow-right"></i> Sign out
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </div>
     </div>
 }
 else

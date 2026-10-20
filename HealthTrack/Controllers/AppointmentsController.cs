@@ -2,6 +2,7 @@ using HealthTrack.Data;
 using HealthTrack.Helpers;
 using HealthTrack.Models;
 using HealthTrack.Models.ViewModels;
+using HealthTrack.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +13,7 @@ using Microsoft.EntityFrameworkCore;
 namespace HealthTrack.Controllers;
 
 [Authorize(Roles = Roles.Client + "," + Roles.Providers)]
-public class AppointmentsController(ApplicationDbContext db, UserManager<ApplicationUser> userManager) : Controller
+public class AppointmentsController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, NotificationService notifications) : Controller
 {
     private string UserId => userManager.GetUserId(User)!;
     private bool IsProvider => User.IsInRole(Roles.Trainer) || User.IsInRole(Roles.Professional);
@@ -55,7 +56,7 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         if (!ModelState.IsValid)
             return View(nameof(Index), await BuildPageAsync(form));
 
-        db.Appointments.Add(new Appointment
+        var appointment = new Appointment
         {
             ClientId = UserId,
             TrainerId = form.TrainerId,
@@ -63,8 +64,13 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
             EndsAt = form.EndsAt,
             Mode = form.Mode,
             Reason = form.Reason.Trim()
-        });
+        };
+        db.Appointments.Add(appointment);
         await db.SaveChangesAsync();
+
+        await notifications.NotifyAsync(form.TrainerId, NotificationType.AppointmentRequested, "New appointment request",
+            $"{await MyNameAsync()} asked for a {form.Mode.Label().ToLowerInvariant()} appointment on {When(appointment)}: “{appointment.Reason}”",
+            DetailsLink(appointment));
 
         TempData["Success"] = $"Request sent to {trainerName}. You'll see it under Upcoming once it's approved.";
         return RedirectToAction(nameof(Index));
@@ -85,6 +91,8 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
 
         SetStatus(appointment, AppointmentStatus.Approved);
         await db.SaveChangesAsync();
+        await notifications.NotifyAsync(appointment.ClientId, NotificationType.AppointmentApproved, "Appointment approved",
+            $"{await MyNameAsync()} approved your appointment on {When(appointment)}.", DetailsLink(appointment));
 
         TempData["Success"] = $"Approved {appointment.Client!.FullName}'s appointment on {appointment.StartsAt:ddd d MMM 'at' HH:mm}.";
         return BackTo(returnUrl, id);
@@ -100,6 +108,9 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         SetStatus(appointment, AppointmentStatus.Declined);
         appointment.TrainerNote = TrackingRules.Clean(note) ?? appointment.TrainerNote;
         await db.SaveChangesAsync();
+        await notifications.NotifyAsync(appointment.ClientId, NotificationType.AppointmentDeclined, "Appointment declined",
+            $"{await MyNameAsync()} declined your request for {When(appointment)}." + (TrackingRules.Clean(note) is { } reason ? $" Reason: {reason}" : ""),
+            DetailsLink(appointment));
 
         TempData["Success"] = $"Declined {appointment.Client!.FullName}'s request.";
         return BackTo(returnUrl, id);
@@ -117,6 +128,11 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         if (IsProvider)
             appointment.TrainerNote = TrackingRules.Clean(note) ?? appointment.TrainerNote;
         await db.SaveChangesAsync();
+        await notifications.NotifyAsync(IsProvider ? appointment.ClientId : appointment.TrainerId, NotificationType.AppointmentCancelled,
+            "Appointment cancelled",
+            $"{await MyNameAsync()} cancelled the appointment on {When(appointment)}."
+                + (IsProvider && TrackingRules.Clean(note) is { } reason ? $" Reason: {reason}" : ""),
+            DetailsLink(appointment));
 
         TempData["Success"] = "Appointment cancelled.";
         return RedirectToAction(nameof(Details), new { id });
@@ -131,6 +147,8 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
 
         SetStatus(appointment, AppointmentStatus.Completed);
         await db.SaveChangesAsync();
+        await notifications.NotifyAsync(appointment.ClientId, NotificationType.AppointmentCompleted, "Appointment completed",
+            $"{await MyNameAsync()} marked your appointment on {When(appointment)} as completed.", DetailsLink(appointment));
 
         TempData["Success"] = "Marked as completed.";
         return BackTo(returnUrl, id);
@@ -184,6 +202,10 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         appointment.TrainerNote = TrackingRules.Clean(form.TrainerNote);
         SetStatus(appointment, AppointmentStatus.Approved);
         await db.SaveChangesAsync();
+        await notifications.NotifyAsync(appointment.ClientId, NotificationType.AppointmentRescheduled, "Appointment updated",
+            $"{await MyNameAsync()} confirmed your appointment for {When(appointment)} ({appointment.Mode.Label().ToLowerInvariant()})."
+                + (appointment.Location is { } location ? $" Location: {location}" : ""),
+            DetailsLink(appointment));
 
         TempData["Success"] = "Appointment updated and confirmed.";
         return RedirectToAction(nameof(Details), new { id });
@@ -224,6 +246,12 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         appointment.Status = status;
         appointment.UpdatedAt = DateTime.UtcNow;
     }
+
+    private Task<string> MyNameAsync() => db.Users.Where(u => u.Id == UserId).Select(u => u.FullName).FirstAsync();
+
+    private static string When(Appointment a) => $"{a.StartsAt:ddd d MMM 'at' HH:mm}";
+
+    private static string DetailsLink(Appointment a) => $"/Appointments/Details/{a.Id}";
 
     private IQueryable<ApplicationUser> Providers() =>
         db.UsersInRole(Roles.Trainer).Concat(db.UsersInRole(Roles.Professional));

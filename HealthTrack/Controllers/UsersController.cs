@@ -2,6 +2,7 @@ using HealthTrack.Data;
 using HealthTrack.Helpers;
 using HealthTrack.Models;
 using HealthTrack.Models.ViewModels;
+using HealthTrack.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +14,7 @@ namespace HealthTrack.Controllers;
 public class UsersController(
     ApplicationDbContext db,
     UserManager<ApplicationUser> userManager,
+    AccountEmails accountEmails,
     ILogger<UsersController> logger) : Controller
 {
     private string UserId => userManager.GetUserId(User)!;
@@ -156,6 +158,8 @@ public class UsersController(
             if (result.Succeeded)
             {
                 logger.LogInformation("Admin {AdminId} reset the password for {UserId}", UserId, user.Id);
+                if (user.EmailConfirmed)
+                    accountEmails.SendPasswordChanged(user);
                 TempData["Success"] = $"Password reset for {user.FullName}. Share the new password with them securely.";
                 return RedirectToAction(nameof(Edit), new { id });
             }

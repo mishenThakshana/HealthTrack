@@ -1,5 +1,8 @@
 @using HealthTrack.Data
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> UserManager
 @{
+    var currentUser = User.Identity?.IsAuthenticated == true ? await UserManager.GetUserAsync(User) : null;
     string NavActive(string controller, string? action = null) =>
         string.Equals(ViewContext.RouteData.Values["controller"] as string, controller, StringComparison.OrdinalIgnoreCase)
         && (action is null || string.Equals(ViewContext.RouteData.Values["action"] as string, action, StringComparison.OrdinalIgnoreCase))
@@ -137,6 +140,18 @@
                     <i class="bi bi-exclamation-circle-fill"></i>
                     <span>@error</span>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            </div>
+        }
+        @if (currentUser is { EmailConfirmed: false })
+        {
+            <div class="container mt-3">
+                <div class="ht-note d-flex flex-wrap align-items-center gap-2 small">
+                    <i class="bi bi-envelope-exclamation text-primary"></i>
+                    <span class="flex-grow-1">Please confirm your email (@currentUser.Email) so we can send you reminders and updates.</span>
+                    <form asp-controller="Account" asp-action="ResendConfirmation" asp-route-returnUrl="@(Context.Request.Path + Context.Request.QueryString)" method="post">
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Resend link</button>
+                    </form>
                 </div>
             </div>
         }

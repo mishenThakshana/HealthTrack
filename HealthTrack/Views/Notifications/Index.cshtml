@@ -1,0 +1,55 @@
+@model IReadOnlyList<Notification>
+@using HealthTrack.Helpers
+@using HealthTrack.Services
+@{
+    ViewData["Title"] = "Notifications";
+    var unread = Model.Count(n => n.ReadAt is null);
+}
+
+<div class="container py-4">
+    <div class="ht-dash-header">
+        <div>
+            <h1 class="h3 mb-1">Notifications</h1>
+            <p class="text-muted mb-0">@(unread == 0 ? "You're all caught up." : $"{unread} unread")</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            @if (unread > 0)
+            {
+                <form asp-action="MarkAllRead" method="post">
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check2-all"></i> Mark all as read</button>
+                </form>
+            }
+            @if (Model.Any(n => n.ReadAt is not null))
+            {
+                <form asp-action="ClearRead" method="post" data-confirm="Remove all read notifications?">
+                    <button type="submit" class="btn btn-outline-primary btn-sm"><i class="bi bi-trash3"></i> Clear read</button>
+                </form>
+            }
+            <a class="btn btn-outline-primary btn-sm" asp-controller="Account" asp-action="Manage" asp-fragment="notifications"><i class="bi bi-gear"></i> Settings</a>
+        </div>
+    </div>
+
+    <div class="ht-panel">
+        @if (Model.Count == 0)
+        {
+            <partial name="_EmptyState" model='new EmptyState("bi-bell", "No notifications yet. Appointment updates, reminders and feedback will show up here.")' />
+        }
+        else
+        {
+            <ul class="list-unstyled ht-item-list mb-0">
+                @foreach (var n in Model)
+                {
+                    <li class="@(n.ReadAt is null ? "ht-unread" : null)">
+                        <div class="ht-icon ht-icon-sm"><i class="bi @NotificationService.Icon(n.Type)"></i></div>
+                        <div class="flex-grow-1 ht-min-w-0">
+                            <a class="fw-semibold" asp-action="Open" asp-route-id="@n.Id">@n.Title</a>
+                            @if (n.ReadAt is null) { <span class="badge rounded-pill ht-badge-pending ms-1">New</span> }
+                            <div class="small text-muted">@n.Message</div>
+                        </div>
+                        <span class="small text-muted text-nowrap" title="@n.CreatedAt.ToLocalTime().ToString("d MMM yyyy, HH:mm")">@TimeAgo.Format(n.CreatedAt)</span>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</div>

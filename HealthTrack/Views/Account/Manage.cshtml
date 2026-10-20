@@ -1,0 +1,160 @@
+@using HealthTrack.Controllers
+@model ManageAccountViewModel
+@{
+    ViewData["Title"] = "My account";
+}
+
+<div class="container py-4">
+    <div class="ht-dash-header">
+        <div>
+            <span class="badge rounded-pill bg-primary-subtle text-primary mb-2">@Model.Role</span>
+            <h1 class="h3 mb-1">My account</h1>
+            <p class="text-muted mb-0">
+                Member since @Model.MemberSince.ToLocalTime().ToString("d MMM yyyy")
+                @if (Model.TrainerName is not null) { <span> · your trainer is @Model.TrainerName</span> }
+            </p>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="ht-panel">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-person"></i> Profile</h2>
+                </div>
+                <form asp-action="UpdateProfile" method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+                    <div class="mb-3">
+                        <label asp-for="Profile.FullName" class="form-label"></label>
+                        <input asp-for="Profile.FullName" class="form-control" autocomplete="name" />
+                        <span asp-validation-for="Profile.FullName" class="text-danger small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Profile.Email" class="form-label"></label>
+                        <input asp-for="Profile.Email" class="form-control" autocomplete="email" />
+                        <span asp-validation-for="Profile.Email" class="text-danger small"></span>
+                        <div class="form-text">
+                            @if (Model.EmailConfirmed)
+                            {
+                                <span class="text-success"><i class="bi bi-check-circle-fill"></i> Confirmed.</span>
+                            }
+                            else
+                            {
+                                <span class="text-warning-emphasis"><i class="bi bi-exclamation-circle-fill"></i> Not confirmed yet, so we can't email you.</span>
+                            }
+                            You sign in with this email. Changing it needs your current password.
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-sm-6">
+                            <label asp-for="Profile.DateOfBirth" class="form-label"></label>
+                            <input asp-for="Profile.DateOfBirth" type="date" class="form-control" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                            <span asp-validation-for="Profile.DateOfBirth" class="text-danger small"></span>
+                        </div>
+                        <div class="col-sm-6">
+                            <label asp-for="Profile.Gender" class="form-label"></label>
+                            <select asp-for="Profile.Gender" asp-items="@(new SelectList(AccountController.Genders))" class="form-select">
+                                <option value="">Not set</option>
+                            </select>
+                            <span asp-validation-for="Profile.Gender" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Profile.CurrentPassword" class="form-label">Current password <span class="text-muted small">(only to change your email)</span></label>
+                        <input asp-for="Profile.CurrentPassword" class="form-control" autocomplete="current-password" />
+                        <span asp-validation-for="Profile.CurrentPassword" class="text-danger small"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save profile</button>
+                </form>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="ht-panel">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-key"></i> Change password</h2>
+                </div>
+                <form asp-action="ChangePassword" method="post" novalidate>
+                    <div class="mb-3">
+                        <label asp-for="Password.CurrentPassword" class="form-label"></label>
+                        <input asp-for="Password.CurrentPassword" class="form-control" autocomplete="current-password" />
+                        <span asp-validation-for="Password.CurrentPassword" class="text-danger small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Password.NewPassword" class="form-label"></label>
+                        <input asp-for="Password.NewPassword" class="form-control" autocomplete="new-password" />
+                        <span asp-validation-for="Password.NewPassword" class="text-danger small"></span>
+                    </div>
+                    <div class="mb-1">
+                        <label asp-for="Password.ConfirmPassword" class="form-label"></label>
+                        <input asp-for="Password.ConfirmPassword" class="form-control" autocomplete="new-password" />
+                        <span asp-validation-for="Password.ConfirmPassword" class="text-danger small"></span>
+                    </div>
+                    <p class="form-text mb-3">At least 8 characters, with an uppercase letter, a lowercase letter and a number.</p>
+                    <button type="submit" class="btn btn-outline-primary">Change password</button>
+                </form>
+            </div>
+
+            @if (!User.IsInRole(HealthTrack.Data.Roles.Admin))
+            {
+                <div class="ht-panel mt-3" id="notifications">
+                    <div class="ht-panel-header">
+                        <h2 class="h6 mb-0"><i class="bi bi-bell"></i> Notifications</h2>
+                    </div>
+                    <form asp-action="UpdateNotifications" method="post">
+                        <p class="small text-muted mb-2">Email me about:</p>
+                        <div class="form-check form-switch mb-2">
+                            <input asp-for="Notifications.EmailAppointments" class="form-check-input" role="switch" />
+                            <label asp-for="Notifications.EmailAppointments" class="form-check-label"></label>
+                        </div>
+                        @if (Model.IsClient)
+                        {
+                            <div class="form-check form-switch mb-2">
+                                <input asp-for="Notifications.EmailReminders" class="form-check-input" role="switch" />
+                                <label asp-for="Notifications.EmailReminders" class="form-check-label"></label>
+                            </div>
+                            <div class="form-check form-switch mb-3">
+                                <input asp-for="Notifications.EmailUpdates" class="form-check-input" role="switch" />
+                                <label asp-for="Notifications.EmailUpdates" class="form-check-label"></label>
+                            </div>
+                            <p class="small text-muted mb-2">Reminders:</p>
+                            <div class="form-check form-switch mb-2">
+                                <input asp-for="Notifications.RemindWorkouts" class="form-check-input" role="switch" />
+                                <label asp-for="Notifications.RemindWorkouts" class="form-check-label"></label>
+                            </div>
+                            <div class="form-check form-switch mb-3">
+                                <input asp-for="Notifications.RemindMeals" class="form-check-input" role="switch" />
+                                <label asp-for="Notifications.RemindMeals" class="form-check-label"></label>
+                            </div>
+                        }
+                        else
+                        {
+                            <input type="hidden" asp-for="Notifications.EmailReminders" />
+                            <input type="hidden" asp-for="Notifications.RemindWorkouts" />
+                            <input type="hidden" asp-for="Notifications.RemindMeals" />
+                            @if (User.IsInRole(HealthTrack.Data.Roles.Trainer))
+                            {
+                                <div class="form-check form-switch mb-3">
+                                    <input asp-for="Notifications.EmailUpdates" class="form-check-input" role="switch" />
+                                    <label class="form-check-label" for="Notifications_EmailUpdates">New clients assigned to me</label>
+                                </div>
+                            }
+                            else
+                            {
+                                <input type="hidden" asp-for="Notifications.EmailUpdates" />
+                            }
+                        }
+                        @if (!Model.EmailConfirmed)
+                        {
+                            <p class="small text-muted">Emails are only sent once your address is confirmed. In-app notifications always appear under the bell.</p>
+                        }
+                        <button type="submit" class="btn btn-outline-primary">Save settings</button>
+                    </form>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

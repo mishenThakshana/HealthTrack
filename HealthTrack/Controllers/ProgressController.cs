@@ -2,6 +2,7 @@ using HealthTrack.Data;
 using HealthTrack.Helpers;
 using HealthTrack.Models;
 using HealthTrack.Models.ViewModels;
+using HealthTrack.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +11,11 @@ using Microsoft.EntityFrameworkCore;
 namespace HealthTrack.Controllers;
 
 [Authorize(Roles = Roles.Client + "," + Roles.Providers)]
-public class ProgressController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, ILogger<ProgressController> logger) : Controller
+public class ProgressController(
+    ApplicationDbContext db,
+    UserManager<ApplicationUser> userManager,
+    NotificationService notifications,
+    ILogger<ProgressController> logger) : Controller
 {
     private string UserId => userManager.GetUserId(User)!;
     private bool IsClient => User.IsInRole(Roles.Client);
@@ -41,6 +46,9 @@ public class ProgressController(ApplicationDbContext db, UserManager<Application
         db.ProgressFeedback.Add(new ProgressFeedback { ClientId = client.Id, AuthorId = UserId, Message = form.Message.Trim() });
         await db.SaveChangesAsync();
         logger.LogInformation("Feedback added for client {ClientId} by {AuthorId}", client.Id, UserId);
+        var author = await db.Users.Where(u => u.Id == UserId).Select(u => u.FullName).FirstAsync();
+        await notifications.NotifyAsync(client.Id, NotificationType.FeedbackReceived, $"New feedback from {author}",
+            form.Message.Trim(), "/Progress#feedback");
 
         TempData["Success"] = $"Feedback shared with {client.FullName}.";
         return RedirectToAction(nameof(Index), new { id, days });

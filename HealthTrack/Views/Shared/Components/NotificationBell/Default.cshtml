@@ -1,0 +1,35 @@
+@model NotificationBellViewModel
+@using HealthTrack.Helpers
+@using HealthTrack.Services
+
+<div class="dropdown">
+    <button class="ht-bell" type="button" data-bs-toggle="dropdown" aria-expanded="false"
+            aria-label="Notifications@(Model.Unread > 0 ? $", {Model.Unread} unread" : "")">
+        <i class="bi bi-bell@(Model.Unread > 0 ? "-fill" : "")"></i>
+        @if (Model.Unread > 0) { <span class="ht-bell-count">@(Model.Unread > 9 ? "9+" : Model.Unread.ToString())</span> }
+    </button>
+    <div class="dropdown-menu dropdown-menu-end ht-user-menu ht-bell-menu">
+        <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1">
+            <span class="fw-semibold">Notifications</span>
+            @if (Model.Unread > 0) { <span class="small text-muted">@Model.Unread unread</span> }
+        </div>
+        <hr class="dropdown-divider" />
+        @if (Model.Latest.Count == 0)
+        {
+            <p class="small text-muted px-3 py-2 mb-0">You're all caught up.</p>
+        }
+        @foreach (var n in Model.Latest)
+        {
+            <a class="dropdown-item ht-bell-item @(n.ReadAt is null ? "ht-unread" : null)" asp-controller="Notifications" asp-action="Open" asp-route-id="@n.Id">
+                <i class="bi @NotificationService.Icon(n.Type)"></i>
+                <span class="ht-min-w-0">
+                    <span class="d-block fw-semibold text-truncate">@n.Title</span>
+                    <span class="d-block small text-muted ht-bell-text">@n.Message</span>
+                    <span class="d-block small text-muted">@TimeAgo.Format(n.CreatedAt)</span>
+                </span>
+            </a>
+        }
+        <hr class="dropdown-divider" />
+        <a class="dropdown-item text-center small" asp-controller="Notifications" asp-action="Index">See all notifications</a>
+    </div>
+</div>
