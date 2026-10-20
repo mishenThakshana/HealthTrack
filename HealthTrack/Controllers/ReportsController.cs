@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 namespace HealthTrack.Controllers;
 
 [Authorize(Roles = Roles.Trainer + "," + Roles.Admin)]
-public class ReportsController(ApplicationDbContext db, UserManager<ApplicationUser> userManager) : Controller
+public class ReportsController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, ILogger<ReportsController> logger) : Controller
 {
     private string UserId => userManager.GetUserId(User)!;
     private bool IsAdmin => User.IsInRole(Roles.Admin);
@@ -46,6 +46,7 @@ public class ReportsController(ApplicationDbContext db, UserManager<ApplicationU
             csv.AppendLine(string.Join(',', row.Select(Csv)));
         }
 
+        logger.LogInformation("User {UserId} exported the client report ({Days} days, {Rows} clients)", UserId, days, report.Clients.Count);
         return File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray(),
             "text/csv", $"healthtrack-client-report-{Dates.Today:yyyy-MM-dd}-{days}d.csv");
     }

@@ -31,4 +31,9 @@ public class RegisterViewModel
 
     [StringLength(20)]
     public string? Gender { get; set; }
+
+    [Required(ErrorMessage = "Please accept the privacy policy to create an account.")]
+    [Range(typeof(bool), "true", "true", ErrorMessage = "Please accept the privacy policy to create an account.")]
+    [Display(Name = "I have read and accept the privacy policy")]
+    public bool AcceptPrivacy { get; set; }
 }

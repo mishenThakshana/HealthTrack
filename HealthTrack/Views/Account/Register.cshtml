@@ -87,7 +87,15 @@
                     </div>
                 </div>
             </div>
-            <p class="form-text mb-4">At least 8 characters, with an uppercase letter, a lowercase letter and a number.</p>
+            <p class="form-text mb-3">At least 8 characters, with an uppercase letter, a lowercase letter and a number.</p>
+
+            <div class="form-check mb-4">
+                <input asp-for="AcceptPrivacy" class="form-check-input" />
+                <label asp-for="AcceptPrivacy" class="form-check-label">
+                    I have read and accept the <a asp-controller="Home" asp-action="Privacy" target="_blank" rel="noopener">privacy policy</a>
+                </label>
+                <span asp-validation-for="AcceptPrivacy" class="text-danger small d-block"></span>
+            </div>
 
             <button type="submit" class="btn btn-primary w-100 py-2">Create account</button>
         </form>

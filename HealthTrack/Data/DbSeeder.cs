@@ -15,7 +15,9 @@ public static class DbSeeder
         using var scope = services.CreateScope();
         var provider = scope.ServiceProvider;
 
-        await provider.GetRequiredService<ApplicationDbContext>().Database.MigrateAsync();
+        var db = provider.GetRequiredService<ApplicationDbContext>();
+        await db.Database.MigrateAsync();
+        await EncryptLegacyRowsAsync(db);
 
         var roleManager = provider.GetRequiredService<RoleManager<IdentityRole>>();
         foreach (var role in Roles.All)
@@ -33,6 +35,27 @@ public static class DbSeeder
 
         foreach (var seed in seedUsers.Where(s => s.TrainerEmail is not null))
             await AssignTrainerAsync(userManager, seed);
+    }
+
+    // Rows saved before column encryption was added are still plain text; re-saving them encrypts them.
+    private static async Task EncryptLegacyRowsAsync(ApplicationDbContext db)
+    {
+        foreach (var (entity, table, column) in ApplicationDbContext.EncryptedColumns)
+        {
+            // Table and column names come from the fixed EncryptedColumns list, never from user input.
+            var sql = "SELECT [Id] AS [Value] FROM [" + table + "] WHERE [" + column + "] IS NOT NULL AND [" + column + "] NOT LIKE '"
+                + ProtectedStringConverter.Prefix + "%'";
+            var ids = await db.Database.SqlQueryRaw<int>(sql).ToListAsync();
+
+            foreach (var id in ids)
+            {
+                if (await db.FindAsync(entity, id) is { } row)
+                    db.Entry(row).Property(column).IsModified = true;
+            }
+
+            if (ids.Count > 0)
+                await db.SaveChangesAsync();
+        }
     }
 
     private static async Task AssignTrainerAsync(UserManager<ApplicationUser> userManager, SeedUser seed)

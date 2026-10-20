@@ -2,6 +2,75 @@
 
 A log of every task completed on HealthTrack, newest first.
 
+## 2026-10-20 — Security hardening & data protection
+
+Commit: not committed yet
+
+### Added
+- **Field-level encryption** (`Data/ProtectedStringConverter.cs`):
+  - An EF value converter using ASP.NET Core Data Protection (purpose `HealthTrack.HealthData.v1`, AES-256-CBC + HMACSHA256). Stored values get an `enc:` prefix; values without it are read as plain text.
+  - Applied through `ApplicationDbContext.EncryptedColumns`: `HealthMeasurements.Notes`, `WorkoutLogs.Notes`, `MealLogs.Description`, `Appointments.Reason`, `Appointments.TrainerNote`, `ProgressFeedback.Message`, `Notifications.Message`. These columns are now `nvarchar(max)`; length limits stay in the form view models.
+  - `DbSeeder.EncryptLegacyRowsAsync` finds rows without the prefix at startup (raw SQL built only from the fixed column list) and re-saves them encrypted.
+  - Data Protection keys are stored in `~/.healthtrack/keys` (configurable as `DataProtection:KeysPath`), with application name `HealthTrack`.
+- **Security headers** (`Helpers/SecurityHeaders.cs`):
+  - Content-Security-Policy: `default-src 'self'`, scripts from self only, styles and fonts from self plus Google Fonts and jsDelivr, `img-src 'self' data:`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`. Development also allows `ws:`/`wss:` for `dotnet watch`.
+  - Also `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, a Permissions-Policy (camera, microphone, geolocation and payment off) and `Cross-Origin-Opener-Policy: same-origin`.
+- **Rate limiting** (`RateLimits.Auth`): fixed window, 10 per minute per IP, on POST Login, Register, UpdateProfile, ChangePassword, ResendConfirmation, ForgotPassword, ResetPassword and DeleteAccount. Rejected requests get 429.
+- **Status pages:** `UseStatusCodePagesWithReExecute("/Home/Status/{0}")` and a `Home/Status` view for 404, 403, 429, 400 ("the form may have expired") and anything else. It ignores antiforgery, so a POST that failed the token check still gets the page.
+- **Privacy and data rights:**
+  - `ApplicationUser.PrivacyAcceptedAt`. Registration requires ticking "I have read and accept the privacy policy" (linked).
+  - **Download my data** (`Account/DownloadData`): a JSON file with profile, settings, measurements, workouts, meals, workout and diet plans (as client or author), appointments (as client or provider), feedback and notifications, with encrypted fields decrypted.
+  - **Delete my account** (clients, `Account/DeleteAccount`): needs the current password and an "I understand" box, and is rate-limited. `Services/AccountDeletion` removes, in one transaction, the user's notifications plus notifications linking to their appointments, feedback, appointments, plans with their exercises and meals, logs, measurements, and finally the Identity user. The user is signed out and gets a confirmation email if their address was confirmed.
+  - Admins can **delete client accounts** (`Users/Delete`), for example after an erasure request. Other roles are refused ("Disable other accounts instead"), and you can't delete yourself.
+  - **Notification retention:** `ReminderService` removes read notifications older than 90 days and all notifications older than 365 days (`Reminders:ReadNotificationRetentionDays`, `NotificationRetentionDays`).
+  - **Privacy page** rewritten: what's stored, why, who can see it per role, protections, retention, rights (access, correction, erasure, choice) and cookies.
+- **Access logging:** a trainer viewing client details, a provider viewing a client's progress, report CSV exports, data downloads and account deletions are written to the application log.
+
+### Changed
+- `Program.cs`:
+  - `RequiredUniqueChars = 4`.
+  - Auth cookie renamed `HealthTrack.Auth`, SameSite=Lax, Secure outside Development, 8-hour sliding expiry. Antiforgery cookie renamed and Secure outside Development.
+  - A global `AutoValidateAntiforgeryTokenAttribute`.
+  - Startup fails outside Development if the connection string still holds `YOUR_PASSWORD`.
+  - The new middleware order: security headers, status pages, HTTPS, routing, rate limiter, auth.
+- Inline styles and scripts removed so the CSP can block them:
+  - The empty `importmap` script in the layout.
+  - The hero icon size (now `.ht-hero-icon`).
+  - The meter bar widths (now `data-width`, set by `site.js`).
+- `site.js`: the boilerplate comments are gone.
+- Failed sign-in lockouts log the user id instead of the email address.
+- `appsettings.json`: `DataProtection:KeysPath` and the retention settings.
+- My account: a **Your data** panel (download, plus delete for clients; other roles are told to ask an admin). Users → Edit: "Delete account and data" for clients.
+- README: a "Security and data protection" section, key backup advice, and progress ticked.
+- Migration `SecurityAndPrivacy`: encrypted columns become `nvarchar(max)`, and `AspNetUsers.PrivacyAcceptedAt` is added.
+
+### Environment / verification
+- Build: succeeded with 0 warnings and 0 errors. `dotnet list package --vulnerable --include-transitive`: none.
+- Ran on port 5299:
+  - **Legacy encryption:** inserted two plain-text rows with sqlcmd and restarted. Both were stored as `enc:CfDJ8…` and still showed decrypted to the client and the trainer.
+  - New measurement, workout, meal, appointment reason and notification message all stored encrypted. The data export showed them decrypted.
+  - Old auth cookies stopped working after the key change, as expected (sign in again once).
+  - **Headers:** CSP, nosniff, DENY, Referrer-Policy, Permissions-Policy and COOP present. The auth cookie is HttpOnly + SameSite=Lax.
+  - **Status pages:** an unknown URL and another user's appointment → "Page not found". A POST without a token → 400 "Something didn't look right".
+  - **Rate limiting:** after 10 sign-in POSTs in a minute → 429 "Too many attempts". GET pages still work.
+  - **CSP in a real browser** (headless Chrome, console and exceptions captured) on Progress, client dashboard, My account, Reports, admin dashboard, Users, Notifications, Register, Privacy and Home: no console errors. Charts, dropdowns and meter bars still render.
+  - **Registration:** without consent → error. A password like `Aa1Aa1Aa1` → "at least 4 different characters". A valid registration records `PrivacyAcceptedAt`.
+  - **Self-deletion:** a wrong password or unticked box → nothing deleted. A trainer posting to it → Access Denied. A valid deletion → user, logs, meals, measurements, appointment and the provider's request notification removed, signed out, "account deleted" email sent, and the old password no longer signs in.
+  - **Admin deletion:** a client deleted. A trainer → refused, and there's no delete button for non-clients.
+  - **Retention:** of four inserted notifications (read 100 days ago, unread 100 days, unread 400 days, read 10 days ago), the restart removed the first and third ("Removed 2 old notifications").
+  - **Access log lines** for client details, progress views and CSV export appeared.
+- **Cleanup:**
+  - Deleted all test users (`d1`, `d2`), logs, measurements, appointments and notifications, and reset identity seeds.
+  - Emptied Mailpit and stopped only the port-5299 process.
+  - Your workout plan and accounts are untouched.
+
+### Notes
+- **The encryption keys matter.** Back up `~/.healthtrack/keys`; without it the encrypted fields can't be read. On macOS and Linux the key files aren't themselves encrypted, so for production protect them (certificate, Azure Key Vault and so on) and use a shared location if there's more than one server.
+- Numbers (weight, calories, dates) aren't field-encrypted because charts and reports query them. SQL Server Transparent Data Encryption or disk encryption covers the whole database.
+- Only client accounts can be deleted, because plans, appointments and feedback written by staff belong to clients' records. Staff accounts are disabled instead.
+- The `SecurityAndPrivacy` Down migration shrinks the encrypted columns back, which would fail once encrypted data is stored.
+- The real SQL password is still in commit `ba40a85` on GitHub (see the previous entry).
+
 ## 2026-10-20 — Emails (Mailpit) and notifications
 
 Commit: not committed yet

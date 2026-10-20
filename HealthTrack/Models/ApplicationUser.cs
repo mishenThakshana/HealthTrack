@@ -15,6 +15,7 @@ public class ApplicationUser : IdentityUser
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? LastLoginAt { get; set; }
+    public DateTime? PrivacyAcceptedAt { get; set; }
 
     public bool EmailAppointments { get; set; } = true;
     public bool EmailReminders { get; set; } = true;

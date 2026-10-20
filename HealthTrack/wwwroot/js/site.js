@@ -1,11 +1,11 @@
-﻿// Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
-// for details on configuring this project to bundle and minify static web assets.
-
-// Write your JavaScript code.
-
 document.addEventListener('submit', event => {
     const message = event.target.dataset?.confirm;
     if (message && !confirm(message)) {
         event.preventDefault();
     }
+});
+
+// Bar widths come from data attributes because the Content Security Policy blocks inline styles.
+document.querySelectorAll('[data-width]').forEach(bar => {
+    bar.style.width = `${Math.min(100, Math.max(0, Number(bar.dataset.width) || 0))}%`;
 });

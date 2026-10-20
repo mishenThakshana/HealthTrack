@@ -202,9 +202,38 @@ These are for local development only. Don't use them in production.
   - `Reminders`: check interval, hours before an appointment, workout and meal times, and how many hours after those times reminders can still go out.
   - For a real SMTP provider, keep credentials in user secrets (`Email:UserName`, `Email:Password`).
 
+## Security and data protection
+
+- **Encryption at rest:**
+  - What's encrypted: measurement and workout notes, meal descriptions, appointment reasons and notes, feedback and notification messages. They're encrypted in the database with ASP.NET Core Data Protection (AES-256 with HMAC) and stored with an `enc:` prefix. Older plain-text rows are encrypted automatically at startup.
+  - Numbers such as weight stay unencrypted so charts and reports can be calculated. Use SQL Server TDE or disk encryption to cover everything.
+- **Encryption keys:**
+  - The keys live in `~/.healthtrack/keys` (override with `DataProtection:KeysPath`). **Back this folder up.** Without it, encrypted fields and existing sign-ins can't be read.
+  - On a server, store the keys somewhere shared and protected, for example with `ProtectKeysWithCertificate`.
+- **Sign-in:**
+  - Passwords need 8+ characters with upper case, lower case, a digit and 4 different characters. Accounts lock for 15 minutes after 5 failed attempts.
+  - Sign-in, registration, password and account-deletion forms are limited to 10 posts per minute per IP.
+  - Sessions end after 8 hours without activity. Role changes, disabling and password resets take effect within a minute.
+- **Cookies:** the `HealthTrack.Auth` and antiforgery cookies are HttpOnly and SameSite=Lax, and Secure outside Development.
+- **Request protection:**
+  - Every POST is checked for an antiforgery token (global filter).
+  - Responses send a strict Content Security Policy (no inline scripts or styles), `X-Frame-Options: DENY`, `nosniff`, a Referrer-Policy, a Permissions-Policy and COOP. HSTS and HTTPS redirection are on in production.
+  - Friendly pages for 400, 403, 404, 429 and 500.
+- **Input validation:**
+  - Server-side validation on every form (lengths, ranges, dates, enums, ownership checks).
+  - Only local return URLs are followed.
+  - CSV exports escape spreadsheet formulas.
+- **Privacy:**
+  - New accounts accept the [privacy policy](HealthTrack/Views/Home/Privacy.cshtml), and the time is recorded.
+  - Everyone can download their data as JSON from My account.
+  - Clients can permanently delete their account and data, and admins can delete client accounts for erasure requests.
+  - Read notifications are removed after 90 days and all notifications after a year.
+  - Trainers' and professionals' access to client data, and report exports, are recorded in the application log. Logs don't include email addresses for failed sign-ins.
+- **Secrets:** `appsettings.json` only has a placeholder connection string. Outside Development the app refuses to start until a real one is supplied.
+
 ## User management
 
-Admins manage accounts at `/Users`: search and filter by role, create users with any role (including other admins), edit profiles, change roles, reset passwords, and disable or re-enable accounts. Admins can't change their own role or disable themselves. A trainer's role can't change while clients are assigned to them, and nobody's role can change while they have upcoming appointments. Role changes, password resets and disabling take effect within a minute.
+Admins manage accounts at `/Users`: search and filter by role, create users with any role (including other admins), edit profiles, change roles, reset passwords, disable or re-enable accounts, and permanently delete client accounts. Admins can't change their own role or disable themselves. A trainer's role can't change while clients are assigned to them, and nobody's role can change while they have upcoming appointments. Role changes, password resets and disabling take effect within a minute.
 
 ## Who can do what
 
@@ -250,4 +279,4 @@ HealthTrack/
 - [x] Health professional role, admin user management, editable log entries
 - [x] My account page (profile and password)
 - [x] Emails (Mailpit) and notifications
-- [ ] Security hardening & data protection
+- [x] Security hardening & data protection

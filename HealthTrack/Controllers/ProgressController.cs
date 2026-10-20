@@ -29,6 +29,9 @@ public class ProgressController(
         if (client is null)
             return NotFound();
 
+        if (!IsClient)
+            logger.LogInformation("Provider {ViewerId} viewed progress of client {ClientId}", UserId, client.Id);
+
         return View(await BuildAsync(client, Periods.Normalize(days), new FeedbackFormViewModel()));
     }
 

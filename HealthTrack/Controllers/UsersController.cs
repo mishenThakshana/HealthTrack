@@ -15,6 +15,7 @@ public class UsersController(
     ApplicationDbContext db,
     UserManager<ApplicationUser> userManager,
     AccountEmails accountEmails,
+    AccountDeletion accountDeletion,
     ILogger<UsersController> logger) : Controller
 {
     private string UserId => userManager.GetUserId(User)!;
@@ -205,6 +206,26 @@ public class UsersController(
 
         TempData["Success"] = enabled ? $"{user.FullName} can sign in again." : $"{user.FullName}'s account is disabled.";
         return RedirectToAction(nameof(Edit), new { id });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(string id)
+    {
+        var user = await userManager.FindByIdAsync(id);
+        if (user is null || user.Id == UserId)
+            return NotFound();
+
+        var name = user.FullName;
+        var result = await accountDeletion.DeleteClientAsync(user);
+        if (!result.Succeeded)
+        {
+            TempData["Error"] = string.Join(" ", result.Errors.Select(e => e.Description));
+            return RedirectToAction(nameof(Edit), new { id });
+        }
+
+        logger.LogInformation("Admin {AdminId} deleted client account {UserId}", UserId, id);
+        TempData["Success"] = $"Deleted {name}'s account and all of their data.";
+        return RedirectToAction(nameof(Index));
     }
 
     private void ValidateProfile(UserFormViewModel form, string prefix = "")

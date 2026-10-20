@@ -104,7 +104,7 @@
                                         <span class="fw-semibold text-truncate">@a.Activity</span>
                                         <span class="small text-muted text-nowrap">@a.Sessions session@(a.Sessions == 1 ? "" : "s") · @a.Minutes min</span>
                                     </div>
-                                    <div class="ht-meter" aria-hidden="true"><span style="width: @(a.Sessions * 100 / most)%"></span></div>
+                                    <div class="ht-meter" aria-hidden="true"><span data-width="@(a.Sessions * 100 / most)"></span></div>
                                 </div>
                             </li>
                         }

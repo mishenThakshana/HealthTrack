@@ -97,6 +97,9 @@ namespace HealthTrack.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime?>("PrivacyAcceptedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<bool>("RemindMeals")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
@@ -168,7 +171,7 @@ namespace HealthTrack.Migrations
                     b.Property<string>("Reason")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("StartsAt")
                         .HasColumnType("datetime2");
@@ -184,7 +187,7 @@ namespace HealthTrack.Migrations
 
                     b.Property<string>("TrainerNote")
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -306,7 +309,7 @@ namespace HealthTrack.Migrations
 
                     b.Property<string>("Notes")
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("RestingHeartRate")
                         .HasColumnType("int");
@@ -346,7 +349,7 @@ namespace HealthTrack.Migrations
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("MealType")
                         .IsRequired()
@@ -382,7 +385,7 @@ namespace HealthTrack.Migrations
                     b.Property<string>("Message")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("ReadAt")
                         .HasColumnType("datetime2");
@@ -434,7 +437,7 @@ namespace HealthTrack.Migrations
                     b.Property<string>("Message")
                         .IsRequired()
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -516,7 +519,7 @@ namespace HealthTrack.Migrations
 
                     b.Property<string>("Notes")
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 

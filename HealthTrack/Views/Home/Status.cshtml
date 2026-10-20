@@ -1,0 +1,20 @@
+@model int
+@{
+    var (icon, title, message) = Model switch
+    {
+        404 => ("bi-signpost-split", "Page not found", "The page you're looking for doesn't exist, or you don't have access to it."),
+        403 => ("bi-shield-lock", "Access denied", "You don't have permission to view this page."),
+        429 => ("bi-hourglass-split", "Too many attempts", "You've tried that too many times. Please wait a minute and try again."),
+        400 => ("bi-arrow-clockwise", "Something didn't look right", "The form may have expired. Go back, refresh the page and try again."),
+        _ => ("bi-exclamation-triangle", "Something went wrong", "We couldn't complete your request. Please try again.")
+    };
+    ViewData["Title"] = title;
+}
+
+<div class="container py-5 text-center">
+    <div class="ht-icon mb-3"><i class="bi @icon"></i></div>
+    <p class="text-muted small mb-1">Error @Model</p>
+    <h1 class="h2">@title</h1>
+    <p class="text-muted">@message</p>
+    <a class="btn btn-primary mt-2" asp-controller="Home" asp-action="Index">Back to home</a>
+</div>

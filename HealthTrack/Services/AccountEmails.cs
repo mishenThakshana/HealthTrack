@@ -35,4 +35,12 @@ public class AccountEmails(EmailQueue emails)
              "If this wasn't you, contact an administrator straight away."]);
         emails.Enqueue(new EmailMessage(oldEmail, user.FullName, "Your HealthTrack email was changed", html, text));
     }
+
+    public void SendAccountDeleted(string name, string email)
+    {
+        var (html, text) = EmailTemplates.Render(name, "Your account has been deleted",
+            ["Your HealthTrack account and all of its health data have been permanently deleted, as you asked.",
+             "If you didn't do this, contact an administrator."]);
+        emails.Enqueue(new EmailMessage(email, name, "Your HealthTrack account has been deleted", html, text));
+    }
 }

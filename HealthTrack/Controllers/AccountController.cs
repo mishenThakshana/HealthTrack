@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using HealthTrack.Data;
 using HealthTrack.Helpers;
 using HealthTrack.Models;
@@ -7,7 +8,9 @@ using HealthTrack.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 
 namespace HealthTrack.Controllers;
 
@@ -15,6 +18,8 @@ public class AccountController(
     UserManager<ApplicationUser> userManager,
     SignInManager<ApplicationUser> signInManager,
     AccountEmails accountEmails,
+    AccountDeletion accountDeletion,
+    ApplicationDbContext db,
     ILogger<AccountController> logger) : Controller
 {
     public static readonly string[] RegisterableRoles = [Roles.Client, Roles.Trainer, Roles.Professional];
@@ -30,6 +35,7 @@ public class AccountController(
     }
 
     [HttpPost, AllowAnonymous, ValidateAntiForgeryToken]
+    [EnableRateLimiting(RateLimits.Auth)]
     public async Task<IActionResult> Register(RegisterViewModel model)
     {
         if (!RegisterableRoles.Contains(model.Role))
@@ -51,7 +57,8 @@ public class AccountController(
             FullName = model.FullName.Trim(),
             DateOfBirth = model.DateOfBirth,
             Gender = model.Gender,
-            LastLoginAt = DateTime.UtcNow
+            LastLoginAt = DateTime.UtcNow,
+            PrivacyAcceptedAt = DateTime.UtcNow
         };
 
         var result = await userManager.CreateAsync(user, model.Password);
@@ -82,6 +89,7 @@ public class AccountController(
     }
 
     [HttpPost, AllowAnonymous, ValidateAntiForgeryToken]
+    [EnableRateLimiting(RateLimits.Auth)]
     public async Task<IActionResult> Login(LoginViewModel model, string? returnUrl = null)
     {
         ViewData["ReturnUrl"] = returnUrl;
@@ -111,7 +119,8 @@ public class AccountController(
         }
         else if (result.IsLockedOut)
         {
-            logger.LogWarning("Account locked out after failed logins: {Email}", model.Email);
+            logger.LogWarning("Sign-in blocked by lockout for {UserId}",
+                (await userManager.FindByEmailAsync(model.Email.Trim()))?.Id ?? "unknown user");
             ModelState.AddModelError(string.Empty, "Too many failed attempts. Your account is locked for 15 minutes.");
         }
         else
@@ -150,6 +159,7 @@ public class AccountController(
     }
 
     [HttpPost, Authorize, ValidateAntiForgeryToken]
+    [EnableRateLimiting(RateLimits.Auth)]
     public async Task<IActionResult> UpdateProfile([Bind(Prefix = "Profile")] ProfileFormViewModel form)
     {
         var user = await userManager.GetUserAsync(User);
@@ -204,6 +214,7 @@ public class AccountController(
     }
 
     [HttpPost, Authorize, ValidateAntiForgeryToken]
+    [EnableRateLimiting(RateLimits.Auth)]
     public async Task<IActionResult> ChangePassword([Bind(Prefix = "Password")] ChangePasswordViewModel form)
     {
         var user = await userManager.GetUserAsync(User);
@@ -256,6 +267,92 @@ public class AccountController(
         return RedirectToAction(nameof(Manage), null, "notifications");
     }
 
+    [HttpGet, Authorize]
+    public async Task<IActionResult> DownloadData()
+    {
+        var user = await userManager.GetUserAsync(User);
+        if (user is null)
+            return Challenge();
+
+        var id = user.Id;
+        var export = new
+        {
+            ExportedAt = DateTime.UtcNow,
+            Profile = new
+            {
+                user.FullName, user.Email, user.EmailConfirmed, user.DateOfBirth, user.Gender,
+                Role = (await userManager.GetRolesAsync(user)).FirstOrDefault(),
+                Trainer = await db.Users.Where(u => u.Id == user.TrainerId).Select(u => u.FullName).FirstOrDefaultAsync(),
+                user.CreatedAt, user.LastLoginAt, user.PrivacyAcceptedAt,
+                NotificationSettings = new { user.EmailAppointments, user.EmailReminders, user.EmailUpdates, user.RemindWorkouts, user.RemindMeals }
+            },
+            Measurements = await db.HealthMeasurements.Where(m => m.ClientId == id).OrderBy(m => m.Date)
+                .Select(m => new { m.Date, m.WeightKg, m.HeightCm, m.BodyFatPercent, m.RestingHeartRate, m.Notes, m.CreatedAt }).ToListAsync(),
+            Workouts = await db.WorkoutLogs.Where(l => l.ClientId == id).OrderBy(l => l.Date)
+                .Select(l => new { l.Date, l.Activity, l.DurationMinutes, l.CaloriesBurned, l.Notes, l.CreatedAt }).ToListAsync(),
+            Meals = await db.MealLogs.Where(l => l.ClientId == id).OrderBy(l => l.Date)
+                .Select(l => new { l.Date, MealType = l.MealType.ToString(), l.Description, l.Calories, l.CreatedAt }).ToListAsync(),
+            WorkoutPlans = await db.WorkoutPlans.Where(p => p.ClientId == id || p.TrainerId == id)
+                .Select(p => new
+                {
+                    p.Title, p.Description, p.StartDate, p.EndDate, p.IsActive, Client = p.Client!.FullName, Trainer = p.Trainer!.FullName,
+                    Exercises = p.Exercises.Select(e => new { Day = e.Day.ToString(), e.Name, e.Sets, e.Reps, e.DurationMinutes, e.Notes })
+                }).ToListAsync(),
+            DietPlans = await db.DietPlans.Where(p => p.ClientId == id || p.TrainerId == id)
+                .Select(p => new
+                {
+                    p.Title, p.Description, p.DailyCalorieTarget, p.StartDate, p.EndDate, p.IsActive, Client = p.Client!.FullName, Trainer = p.Trainer!.FullName,
+                    Meals = p.Meals.Select(m => new { MealType = m.MealType.ToString(), m.Description, m.Calories })
+                }).ToListAsync(),
+            Appointments = await db.Appointments.Where(a => a.ClientId == id || a.TrainerId == id).OrderBy(a => a.StartsAt)
+                .Select(a => new
+                {
+                    a.StartsAt, a.EndsAt, Mode = a.Mode.ToString(), Status = a.Status.ToString(), a.Location, a.Reason, a.TrainerNote,
+                    Client = a.Client!.FullName, Provider = a.Trainer!.FullName, a.CreatedAt
+                }).ToListAsync(),
+            Feedback = await db.ProgressFeedback.Where(f => f.ClientId == id || f.AuthorId == id).OrderBy(f => f.CreatedAt)
+                .Select(f => new { Client = f.Client!.FullName, Author = f.Author!.FullName, f.Message, f.CreatedAt }).ToListAsync(),
+            Notifications = await db.Notifications.Where(n => n.UserId == id).OrderBy(n => n.CreatedAt)
+                .Select(n => new { Type = n.Type.ToString(), n.Title, n.Message, n.CreatedAt, n.ReadAt }).ToListAsync()
+        };
+
+        logger.LogInformation("User {UserId} downloaded their data", id);
+        var json = JsonSerializer.SerializeToUtf8Bytes(export, new JsonSerializerOptions { WriteIndented = true });
+        return File(json, "application/json", $"healthtrack-my-data-{DateTime.Today:yyyy-MM-dd}.json");
+    }
+
+    [HttpPost, Authorize(Roles = Roles.Client), ValidateAntiForgeryToken]
+    [EnableRateLimiting(RateLimits.Auth)]
+    public async Task<IActionResult> DeleteAccount(string? password, bool confirm)
+    {
+        var user = await userManager.GetUserAsync(User);
+        if (user is null)
+            return Challenge();
+
+        if (!confirm || string.IsNullOrEmpty(password) || !await userManager.CheckPasswordAsync(user, password))
+        {
+            TempData["Error"] = "Your account wasn't deleted. Tick the box and enter your current password to confirm.";
+            return RedirectToAction(nameof(Manage), null, "delete");
+        }
+
+        var email = user.Email;
+        var name = user.FullName;
+        var confirmed = user.EmailConfirmed;
+        var result = await accountDeletion.DeleteClientAsync(user);
+        if (!result.Succeeded)
+        {
+            TempData["Error"] = string.Join(" ", result.Errors.Select(e => e.Description));
+            return RedirectToAction(nameof(Manage));
+        }
+
+        await signInManager.SignOutAsync();
+        if (confirmed && email is not null)
+            accountEmails.SendAccountDeleted(name, email);
+
+        TempData["Success"] = "Your account and all of your health data have been permanently deleted.";
+        return RedirectToAction("Index", "Home");
+    }
+
     [HttpGet, AllowAnonymous]
     public async Task<IActionResult> ConfirmEmail(string? userId, string? code)
     {
@@ -269,6 +366,7 @@ public class AccountController(
     }
 
     [HttpPost, Authorize, ValidateAntiForgeryToken]
+    [EnableRateLimiting(RateLimits.Auth)]
     public async Task<IActionResult> ResendConfirmation(string? returnUrl)
     {
         var user = await userManager.GetUserAsync(User);
@@ -288,6 +386,7 @@ public class AccountController(
     public IActionResult ForgotPassword() => View(new ForgotPasswordViewModel());
 
     [HttpPost, AllowAnonymous, ValidateAntiForgeryToken]
+    [EnableRateLimiting(RateLimits.Auth)]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
     {
         if (!ModelState.IsValid)
@@ -315,6 +414,7 @@ public class AccountController(
     }
 
     [HttpPost, AllowAnonymous, ValidateAntiForgeryToken]
+    [EnableRateLimiting(RateLimits.Auth)]
     public async Task<IActionResult> ResetPassword(ResetPasswordWithCodeViewModel model)
     {
         if (!ModelState.IsValid)

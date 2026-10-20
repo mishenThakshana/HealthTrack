@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace HealthTrack.Controllers;
 
 [Authorize(Roles = Roles.Trainer)]
-public class ClientsController(ApplicationDbContext db, UserManager<ApplicationUser> userManager) : Controller
+public class ClientsController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, ILogger<ClientsController> logger) : Controller
 {
     public async Task<IActionResult> Index()
     {
@@ -25,6 +25,7 @@ public class ClientsController(ApplicationDbContext db, UserManager<ApplicationU
         if (client is null)
             return NotFound();
 
+        logger.LogInformation("Trainer {TrainerId} viewed details of client {ClientId}", trainerId, id);
         return View(new ClientDetailsViewModel
         {
             Client = client,

@@ -88,6 +88,15 @@
                         <button type="submit" class="btn btn-outline-danger"><i class="bi bi-slash-circle"></i> Disable account</button>
                     </form>
                 }
+                @if (!Model.IsSelf && Model.Form.Role == Roles.Client)
+                {
+                    <hr />
+                    <p class="small text-muted">Deleting removes the client and all of their health data permanently, for example after an erasure request.</p>
+                    <form asp-action="Delete" asp-route-id="@Model.Id" method="post"
+                          data-confirm="Permanently delete @Model.Form.FullName and all of their data? This can't be undone.">
+                        <button type="submit" class="btn btn-outline-danger"><i class="bi bi-trash3"></i> Delete account and data</button>
+                    </form>
+                }
             </div>
         </div>
     </div>

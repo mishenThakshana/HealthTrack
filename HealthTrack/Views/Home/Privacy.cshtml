@@ -1,8 +1,52 @@
 @{
-    ViewData["Title"] = "Privacy Policy";
+    ViewData["Title"] = "Privacy policy";
 }
 
 <div class="container py-5">
-    <h1 class="h2 ht-page-header">@ViewData["Title"]</h1>
-    <p>HealthTrack stores personal health data only to provide its tracking, planning and appointment features. Access is limited by role, and data is never shared with third parties without consent.</p>
+    <div class="ht-prose mx-auto">
+        <h1 class="h2 ht-page-header">Privacy policy</h1>
+        <p class="text-muted">HealthTrack stores personal health information, so we keep it to what the app needs and limit who can see it.</p>
+
+        <h2 class="h5 mt-4">What we store</h2>
+        <ul>
+            <li><strong>Account details:</strong> name, email, password (stored only as a salted hash), date of birth, gender, role and sign-in times.</li>
+            <li><strong>Health data you enter:</strong> measurements (weight, height, body fat, resting heart rate), workouts, meals and notes.</li>
+            <li><strong>Coaching data:</strong> workout and diet plans, appointments, feedback and notifications.</li>
+        </ul>
+
+        <h2 class="h5 mt-4">Why we use it</h2>
+        <p>Only to provide HealthTrack: tracking your progress, letting your trainer plan for you, booking consultations and sending the reminders you choose. We don't sell data, use it for advertising, or share it with third parties.</p>
+
+        <h2 class="h5 mt-4">Who can see it</h2>
+        <ul>
+            <li><strong>You</strong> can see everything you've entered.</li>
+            <li><strong>Your assigned trainer</strong> can see your measurements, logs and progress, and manage your plans.</li>
+            <li><strong>A health professional</strong> can see your progress only after approving an appointment with you.</li>
+            <li><strong>Administrators</strong> manage accounts and see summary reports. They can't open an individual client's progress page.</li>
+        </ul>
+
+        <h2 class="h5 mt-4">How we protect it</h2>
+        <ul>
+            <li>Every page needs you to be signed in, and each role can only reach its own data.</li>
+            <li>Notes, meal descriptions, appointment details, feedback and notification messages are encrypted in the database.</li>
+            <li>Connections use HTTPS in production, sign-in is rate-limited, and accounts lock after repeated failed attempts.</li>
+            <li>Access to client data by trainers and professionals is recorded in the application log.</li>
+        </ul>
+
+        <h2 class="h5 mt-4">How long we keep it</h2>
+        <p>Your health data is kept while your account exists. Read notifications are removed after 90 days and all notifications after a year.</p>
+
+        <h2 class="h5 mt-4">Your rights</h2>
+        <ul>
+            <li><strong>Access and portability:</strong> download all your data from <a asp-controller="Account" asp-action="Manage" asp-fragment="delete">My account</a>.</li>
+            <li><strong>Correction:</strong> edit your profile and any entry you've logged.</li>
+            <li><strong>Erasure:</strong> clients can permanently delete their account and data from My account. Other users can ask an administrator.</li>
+            <li><strong>Choice:</strong> turn email reminders and updates on or off under My account → Notifications.</li>
+        </ul>
+
+        <h2 class="h5 mt-4">Cookies</h2>
+        <p>We only use the cookies needed to keep you signed in and to protect forms. There are no tracking or advertising cookies.</p>
+
+        <p class="text-muted small mt-4">Questions about your data? Contact your HealthTrack administrator.</p>
+    </div>
 </div>

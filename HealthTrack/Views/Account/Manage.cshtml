@@ -152,6 +152,48 @@
                 </div>
             }
         </div>
+
+        <div class="col-12">
+            <div class="ht-panel" id="delete">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-shield-check"></i> Your data</h2>
+                    <a class="small" asp-controller="Home" asp-action="Privacy">Privacy policy <i class="bi bi-chevron-right"></i></a>
+                </div>
+                <div class="row g-4">
+                    <div class="col-lg-5">
+                        <p class="small text-muted mb-2">Download a copy of everything HealthTrack stores about you, as a JSON file.</p>
+                        <a class="btn btn-outline-primary" asp-action="DownloadData"><i class="bi bi-download"></i> Download my data</a>
+                    </div>
+                    <div class="col-lg-7">
+                        @if (Model.IsClient)
+                        {
+                            <p class="small text-muted mb-2">
+                                Permanently delete your account with all your measurements, logs, plans, appointments, feedback and notifications. This can't be undone.
+                            </p>
+                            <form asp-action="DeleteAccount" method="post" data-confirm="Permanently delete your account and all of your data?">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-sm-6">
+                                        <label for="deletePassword" class="form-label small">Current password</label>
+                                        <input id="deletePassword" name="password" type="password" class="form-control form-control-sm" autocomplete="current-password" />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <div class="form-check mb-1">
+                                            <input id="deleteConfirm" name="confirm" type="checkbox" value="true" class="form-check-input" />
+                                            <label for="deleteConfirm" class="form-check-label small">I understand this is permanent</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-outline-danger btn-sm mt-2"><i class="bi bi-trash3"></i> Delete my account</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <p class="small text-muted mb-0">To close a @Model.Role.ToLowerInvariant() account, ask an administrator. They can disable it so nobody can sign in.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

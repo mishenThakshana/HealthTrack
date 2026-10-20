@@ -765,3 +765,15 @@ main {
   font-size: 1rem;
   border-radius: .6rem;
 }
+
+.ht-hero-icon {
+  font-size: 10rem;
+}
+
+.ht-prose {
+  max-width: 760px;
+}
+
+.ht-prose li {
+  margin-bottom: .35rem;
+}

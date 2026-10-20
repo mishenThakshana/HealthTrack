@@ -1,12 +1,25 @@
 using HealthTrack.Models;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace HealthTrack.Data;
 
-public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IDataProtectionProvider dataProtection)
     : IdentityDbContext<ApplicationUser>(options)
 {
+    // Free-text fields that can hold health details are encrypted at rest.
+    public static readonly (Type Entity, string Table, string Column)[] EncryptedColumns =
+    [
+        (typeof(HealthMeasurement), "HealthMeasurements", nameof(HealthMeasurement.Notes)),
+        (typeof(WorkoutLog), "WorkoutLogs", nameof(WorkoutLog.Notes)),
+        (typeof(MealLog), "MealLogs", nameof(MealLog.Description)),
+        (typeof(Appointment), "Appointments", nameof(Appointment.Reason)),
+        (typeof(Appointment), "Appointments", nameof(Appointment.TrainerNote)),
+        (typeof(ProgressFeedback), "ProgressFeedback", nameof(Models.ProgressFeedback.Message)),
+        (typeof(Notification), "Notifications", nameof(Notification.Message))
+    ];
+
     public DbSet<WorkoutPlan> WorkoutPlans => Set<WorkoutPlan>();
     public DbSet<WorkoutExercise> WorkoutExercises => Set<WorkoutExercise>();
     public DbSet<DietPlan> DietPlans => Set<DietPlan>();
@@ -95,5 +108,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             f.HasOne(x => x.Author).WithMany().HasForeignKey(x => x.AuthorId).OnDelete(DeleteBehavior.NoAction);
             f.HasIndex(x => new { x.ClientId, x.CreatedAt });
         });
+
+        var converter = new ProtectedStringConverter(dataProtection.CreateProtector(ProtectedStringConverter.Purpose));
+        foreach (var (entity, _, column) in EncryptedColumns)
+            builder.Entity(entity).Property(column).HasConversion(converter).HasColumnType("nvarchar(max)");
     }
 }

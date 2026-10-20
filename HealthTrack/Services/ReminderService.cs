@@ -15,9 +15,12 @@ public class ReminderOptions
     public TimeOnly WorkoutTime { get; set; } = new(17, 0);
     public TimeOnly MealTime { get; set; } = new(20, 0);
     public int WindowHours { get; set; } = 4;
+    public int ReadNotificationRetentionDays { get; set; } = 90;
+    public int NotificationRetentionDays { get; set; } = 365;
 }
 
-// Periodically creates appointment, workout and meal reminders. Each reminder has a key, so it's only sent once.
+// Periodically removes old notifications and creates appointment, workout and meal reminders.
+// Each reminder has a key, so it's only sent once.
 public class ReminderService(IServiceScopeFactory scopes, IOptions<ReminderOptions> options, ILogger<ReminderService> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -44,6 +47,14 @@ public class ReminderService(IServiceScopeFactory scopes, IOptions<ReminderOptio
         var settings = options.Value;
         var now = DateTime.Now;
         var today = Dates.Today;
+
+        var readCutoff = DateTime.UtcNow.AddDays(-settings.ReadNotificationRetentionDays);
+        var cutoff = DateTime.UtcNow.AddDays(-settings.NotificationRetentionDays);
+        var purged = await db.Notifications
+            .Where(n => (n.ReadAt != null && n.CreatedAt < readCutoff) || n.CreatedAt < cutoff)
+            .ExecuteDeleteAsync(token);
+        if (purged > 0)
+            logger.LogInformation("Removed {Count} old notifications", purged);
 
         var horizon = now.AddHours(settings.AppointmentHoursBefore);
         var appointments = await db.Appointments.AsNoTracking().Include(a => a.Client).Include(a => a.Trainer)
