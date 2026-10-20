@@ -1,0 +1,83 @@
+@model AppointmentsPageViewModel
+@{
+    ViewData["Title"] = "Appointments";
+    var list = new ViewDataDictionary(ViewData) { ["IsTrainer"] = Model.IsTrainer };
+}
+
+<div class="container py-4">
+    <div class="ht-dash-header">
+        <div>
+            <h1 class="h3 mb-1">Appointments</h1>
+            <p class="text-muted mb-0">
+                @(Model.IsTrainer ? "Review consultation requests and manage your schedule." : "Book a consultation and keep track of your sessions.")
+            </p>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        @if (!Model.IsTrainer)
+        {
+            <div class="col-lg-4">
+                <div class="ht-panel">
+                    <div class="ht-panel-header">
+                        <h2 class="h6 mb-0"><i class="bi bi-calendar-plus"></i> Book an appointment</h2>
+                    </div>
+                    @if (!Model.Trainers.Any())
+                    {
+                        <partial name="_EmptyState" model='new EmptyState("bi-person-badge", "There are no trainers to book with yet.")' />
+                    }
+                    else
+                    {
+                        <form asp-action="Create" method="post" novalidate>
+                            <div class="mb-3">
+                                <label asp-for="Form.TrainerId" class="form-label"></label>
+                                <select asp-for="Form.TrainerId" asp-items="Model.Trainers" class="form-select">
+                                    <option value="">Choose a trainer</option>
+                                </select>
+                                <span asp-validation-for="Form.TrainerId" class="text-danger small"></span>
+                            </div>
+                            <partial name="_SlotFields" for="Form" />
+                            <div class="mb-3">
+                                <label asp-for="Form.Reason" class="form-label"></label>
+                                <textarea asp-for="Form.Reason" class="form-control" rows="3" placeholder="e.g. Review my progress and adjust my plan"></textarea>
+                                <span asp-validation-for="Form.Reason" class="text-danger small"></span>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-send"></i> Request appointment</button>
+                        </form>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="@(Model.IsTrainer ? "col-12" : "col-lg-8")">
+            <div class="ht-panel mb-3">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-inbox"></i> @(Model.IsTrainer ? "Requests to review" : "Awaiting approval")</h2>
+                    @if (Model.Requests.Count > 0) { <span class="badge rounded-pill ht-badge-pending">@Model.Requests.Count</span> }
+                </div>
+                <partial name="_AppointmentList" model="Model.Requests"
+                         view-data='new ViewDataDictionary(list) { ["EmptyIcon"] = "bi-inbox", ["Empty"] = Model.IsTrainer ? "No requests to review." : "No requests waiting for a reply." }' />
+            </div>
+
+            <div class="ht-panel mb-3">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-calendar-check"></i> Upcoming</h2>
+                </div>
+                <partial name="_AppointmentList" model="Model.Upcoming"
+                         view-data='new ViewDataDictionary(list) { ["EmptyIcon"] = "bi-calendar", ["Empty"] = "No upcoming appointments." }' />
+            </div>
+
+            <div class="ht-panel">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-clock-history"></i> Past &amp; cancelled</h2>
+                </div>
+                <partial name="_AppointmentList" model="Model.History"
+                         view-data='new ViewDataDictionary(list) { ["EmptyIcon"] = "bi-clock-history", ["Empty"] = "Nothing here yet." }' />
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -24,7 +24,7 @@
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-md navbar-dark ht-navbar">
+        <nav class="navbar navbar-expand-lg navbar-dark ht-navbar">
             <div class="container">
                 <a class="navbar-brand" asp-controller="Home" asp-action="Index">
                     <i class="bi bi-heart-pulse-fill"></i> HealthTrack
@@ -35,7 +35,7 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="mainNav">
-                    <ul class="navbar-nav me-auto ms-md-3 gap-md-1">
+                    <ul class="navbar-nav me-auto ms-lg-3 gap-lg-1">
                         <li class="nav-item">
                             <a class="nav-link @NavActive("Home", "Index")" asp-controller="Home" asp-action="Index">
                                 <i class="bi bi-house"></i> Home
@@ -67,6 +67,14 @@
                                     <li><a class="dropdown-item" asp-controller="WorkoutPlans" asp-action="Index"><i class="bi bi-activity"></i> Workout plans</a></li>
                                     <li><a class="dropdown-item" asp-controller="DietPlans" asp-action="Index"><i class="bi bi-egg-fried"></i> Diet plans</a></li>
                                 </ul>
+                            </li>
+                        }
+                        @if (User.IsInRole(Roles.Trainer) || User.IsInRole(Roles.Client))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @NavActive("Appointments")" asp-controller="Appointments" asp-action="Index">
+                                    <i class="bi bi-calendar-check"></i> Appointments
+                                </a>
                             </li>
                         }
                         @if (User.IsInRole(Roles.Client))
@@ -103,6 +111,16 @@
                 <div class="alert alert-success alert-dismissible fade show ht-alert" role="alert">
                     <i class="bi bi-check-circle-fill"></i>
                     <span>@success</span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            </div>
+        }
+        @if (TempData["Error"] is string error)
+        {
+            <div class="container mt-3">
+                <div class="alert alert-danger alert-dismissible fade show ht-alert" role="alert">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                    <span>@error</span>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             </div>

@@ -2,9 +2,64 @@
 
 A log of every task completed on HealthTrack, newest first.
 
-## 2026-10-04 — Workout & diet management
+## 2026-10-04 — Appointment system
 
 Commit: not committed yet
+
+### Added
+- **Data model** (migration `20261004063449_Appointments`):
+  - `Appointment`: client, trainer, `StartsAt`/`EndsAt` (`datetime2`, server local time), `Mode`, optional `Location` (200), `Reason` (300), `Status`, optional `TrainerNote` (300), `CancelledByClient`, `CreatedAt`/`UpdatedAt` (UTC), and a computed `DurationMinutes` that isn't stored.
+  - `AppointmentStatus` enum (Pending, Approved, Declined, Cancelled, Completed) and `AppointmentMode` enum (InPerson, Video, Phone), both stored as strings (max 10).
+  - Client and trainer FKs use `NoAction`, as with plans, to avoid two cascade paths to `AspNetUsers`. Indexes on `(TrainerId, StartsAt)` and `(ClientId, StartsAt)`.
+- `Helpers/AppointmentRules.cs`: allowed durations (30/45/60/90), opening hours (06:00–21:00), 90-day booking limit, the `CanRespond` / `CanReschedule` / `CanCancel` / `CanComplete` checks shared by the controller and views, status labels (a pending request whose start time has passed shows as "Expired"), and `Label()`/`Icon()` extensions for the mode.
+- `Models/ViewModels/AppointmentViewModels.cs`: a shared `AppointmentSlotViewModel` (date, time, duration, type) with `AppointmentRequestViewModel` (adds trainer and reason) and `AppointmentEditViewModel` (adds location and note), plus page models.
+- `AppointmentsController` (`/Appointments`, Client and Trainer; Admin gets Access Denied):
+  - `Index`: Clients see a booking form (trainer dropdown with their assigned trainer preselected) and three lists: Awaiting approval, Upcoming, and Past & cancelled (latest 50). Trainers see Requests to review (with a count badge), Upcoming, and Past & cancelled, with inline Approve / Decline buttons for requests and Complete for past approved ones.
+  - `Create` (Client): validates the trainer is a real Trainer, the slot (future, within 90 days, inside opening hours, listed duration, valid type), and overlaps. It is rejected if the trainer has an approved appointment at that time ("Alex Morgan is already booked…") or the client already has a pending or approved one.
+  - `Details/{id}`: only the appointment's client or trainer can view it; anyone else gets 404. Shows when, duration, type, location, reason, trainer note, request time, and who cancelled. The Actions panel shows only what's allowed: Approve; Decline with an optional reason; "Change time & approve" or "Reschedule or edit"; Mark as completed; Cancel (trainers can add a reason).
+  - `Approve` refuses if the trainer already has an approved appointment that overlaps, showing a red error alert. `Decline` stores the optional note. `Cancel` records whether the client cancelled. `Complete` works only after the start time. Every action checks ownership and state and returns 404 otherwise. Inline actions take a `returnUrl` that must be local (`Url.IsLocalUrl`).
+  - `Edit/{id}` (Trainer): reschedule date, time, duration and type, and set a location or meeting link and a note. Saving re-runs the slot and overlap checks (excluding the appointment itself) and confirms it as Approved.
+- Views: `Appointments/Index`, `Details`, `Edit`, `_SlotFields` (date/time/duration/type fields, rendered with `<partial for="Form">` so names keep the `Form.` prefix), and shared `_AppointmentList`, `_AppointmentItem` and `_AppointmentStatus` partials.
+- CSS: `.ht-badge-pending` (amber), `.ht-badge-completed` (blue), `.ht-note`, `.ht-min-w-0`, `.ht-appt-reason`.
+
+### Changed
+- **Client dashboard:** the "Upcoming appointments" panel now lists the next 3 pending or approved appointments, with a "Book" or "View all" link.
+- **Trainer dashboard:**
+  - The "Appointments today" tile counts today's approved and completed appointments, with a hint of "Next at HH:mm", "All done for today" or "None scheduled".
+  - The "Appointment requests" panel lists the next 5 pending requests, with Approve and Decline buttons.
+- **Layout:**
+  - New "Appointments" nav link (`bi-calendar-check`) for clients and trainers.
+  - New red alert for `TempData["Error"]`, styled like the success alert.
+  - The navbar now collapses below `lg` (992px) instead of `md`. With six links, the client's account pill was cut off at 800px. Updated `navbar-expand-lg`, `ms-lg-3 gap-lg-1`, `order-lg-last` in `_LoginPartial`, and the two navbar media queries in `site.css` (now `max-width: 991.98px`).
+- README: added an Appointments section, updated "Who can do what" and the Helpers line, and ticked "Appointment system".
+- CHANGELOG: filled in the commit hash (`68caada`) for the workout & diet entry.
+
+### Environment / verification
+- Build: succeeded with 0 warnings and 0 errors. `dotnet ef migrations add Appointments` created the table, FKs and indexes; the migration applied on startup.
+- Ran on port 5299 and tested with curl, signed in as the seeded client, the seeded trainer, the admin, and a temporary second client:
+  - Valid request → 302; the trainer sees it under Requests.
+  - Rejected with field errors: a request overlapping the client's own; a past time; 05:00 start; 20:30 + 60 min (past closing); a 20-minute duration; an invalid type; a short reason; an unknown trainer; 120 days ahead.
+  - A second client can request an overlapping slot while the first is only pending. Approving it after the first was approved → "You already have an appointment at that time" alert.
+  - Decline with `returnUrl=https://evil.com` → redirected to the Details page instead. The decline note shows to the client.
+  - Client POST to Approve → Access Denied. Another client opening someone else's appointment → 404. Admin → Access Denied.
+  - Trainer edit: the form prefills `10:00`, `60 min` and `Video`. Moving it to 14:00 for 45 min with a location and note → client sees Approved, 14:00–14:45, "Studio 2", the note. A booking at 14:30 is rejected ("Alex Morgan is already booked…"); 14:45 (back-to-back) is accepted. Rescheduling another request onto 14:00 → conflict error.
+  - Client cancels → "Cancelled by Jamie Silva". Cancelling again → 404. Complete on a future appointment → 404.
+  - Past rows inserted with SQL: a past approved appointment shows a Complete button, and completing it shows "Completed". A past pending one shows "Expired"; approving or cancelling it → 404.
+- Screenshots (headless Chrome over the DevTools protocol):
+  - At 1200px: client Appointments, trainer Appointments, trainer dashboard, appointment details, edit form.
+  - At 420px: trainer Appointments (buttons wrap below the item) and client dashboard.
+  - Client navbar at 1000px (fits on one row) and at 800px (collapsed menu open).
+- **Cleanup:** deleted all test appointments, reset the identity seed, and removed the temporary client `c2@healthtrack.local`. Stopped only the port-5299 process and headless Chrome. The user's `dotnet watch` on 5182 was left running.
+
+### Notes
+- There's no separate "healthcare professional" role yet; consultations are booked with trainers. A new role could reuse the same flow.
+- Pending requests don't block a slot. Only approved appointments do, so a trainer can receive competing requests and approve one.
+- Times use the server's local clock (`DateTime.Now`), matching how the rest of the app handles dates.
+- Appointment reminders belong to the "Notifications" step.
+
+## 2026-10-04 — Workout & diet management
+
+Commit: `68caada`
 
 ### Added
 - **Data model** (migration `20261004054823_WorkoutAndDiet`):

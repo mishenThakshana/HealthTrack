@@ -1,0 +1,136 @@
+@model AppointmentDetailsViewModel
+@using HealthTrack.Helpers
+@{
+    var a = Model.Appointment;
+    var other = Model.IsTrainer ? a.Client! : a.Trainer!;
+    ViewData["Title"] = $"Appointment with {other.FullName}";
+    var canRespond = Model.IsTrainer && AppointmentRules.CanRespond(a);
+    var canReschedule = Model.IsTrainer && AppointmentRules.CanReschedule(a);
+    var canCancel = AppointmentRules.CanCancel(a, Model.IsTrainer);
+    var canComplete = Model.IsTrainer && AppointmentRules.CanComplete(a);
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><a asp-action="Index">Appointments</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@a.StartsAt.ToString("d MMM yyyy")</li>
+        </ol>
+    </nav>
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="ht-panel">
+                <div class="d-flex align-items-start gap-3 mb-4">
+                    <div class="ht-icon"><i class="bi @a.Mode.Icon()"></i></div>
+                    <div class="flex-grow-1">
+                        <h1 class="h4 mb-1">@ViewData["Title"]</h1>
+                        <div class="text-muted">@a.StartsAt.ToString("dddd d MMMM yyyy") · @a.StartsAt.ToString("HH:mm")–@a.EndsAt.ToString("HH:mm")</div>
+                    </div>
+                    <partial name="_AppointmentStatus" model="a" />
+                </div>
+
+                <dl class="row ht-profile mb-0">
+                    <dt class="col-sm-4">@(Model.IsTrainer ? "Client" : "Trainer")</dt>
+                    <dd class="col-sm-8">
+                        @if (Model.IsTrainer && other.TrainerId == a.TrainerId)
+                        {
+                            <a asp-controller="Clients" asp-action="Details" asp-route-id="@other.Id">@other.FullName</a>
+                        }
+                        else
+                        {
+                            @other.FullName
+                        }
+                        <span class="text-muted small d-block text-break">@other.Email</span>
+                    </dd>
+
+                    <dt class="col-sm-4">Duration</dt>
+                    <dd class="col-sm-8">@a.DurationMinutes min</dd>
+
+                    <dt class="col-sm-4">Type</dt>
+                    <dd class="col-sm-8">@a.Mode.Label()</dd>
+
+                    @if (a.Location is not null)
+                    {
+                        <dt class="col-sm-4">@(a.Mode == AppointmentMode.InPerson ? "Location" : "Meeting details")</dt>
+                        <dd class="col-sm-8 text-break">@a.Location</dd>
+                    }
+
+                    <dt class="col-sm-4">Reason</dt>
+                    <dd class="col-sm-8 ht-prewrap">@a.Reason</dd>
+
+                    @if (a.TrainerNote is not null)
+                    {
+                        <dt class="col-sm-4">Note from trainer</dt>
+                        <dd class="col-sm-8 ht-prewrap">@a.TrainerNote</dd>
+                    }
+
+                    <dt class="col-sm-4">Requested</dt>
+                    <dd class="col-sm-8">@a.CreatedAt.ToLocalTime().ToString("d MMM yyyy, HH:mm")</dd>
+
+                    @if (a.Status == AppointmentStatus.Cancelled)
+                    {
+                        <dt class="col-sm-4">Cancelled by</dt>
+                        <dd class="col-sm-8">@(a.CancelledByClient ? a.Client!.FullName : a.Trainer!.FullName) on @a.UpdatedAt.ToLocalTime().ToString("d MMM yyyy")</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="ht-panel">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-lightning"></i> Actions</h2>
+                </div>
+
+                @if (!canRespond && !canReschedule && !canCancel && !canComplete)
+                {
+                    <p class="text-muted small mb-0">No further actions for this appointment.</p>
+                }
+
+                @if (!Model.IsTrainer && a.Status == AppointmentStatus.Pending && canCancel)
+                {
+                    <p class="text-muted small">Waiting for your trainer to approve this request.</p>
+                }
+
+                @if (canRespond)
+                {
+                    <form asp-action="Approve" asp-route-id="@a.Id" method="post" class="mb-3">
+                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-check-lg"></i> Approve</button>
+                    </form>
+                    <form asp-action="Decline" asp-route-id="@a.Id" method="post" class="mb-3" data-confirm="Decline this appointment request?">
+                        <label for="declineNote" class="form-label small">Reason for declining (optional)</label>
+                        <input id="declineNote" name="note" maxlength="300" class="form-control form-control-sm mb-2" />
+                        <button type="submit" class="btn btn-outline-primary w-100">Decline</button>
+                    </form>
+                }
+
+                @if (canReschedule)
+                {
+                    <a class="btn btn-outline-primary w-100 mb-3" asp-action="Edit" asp-route-id="@a.Id">
+                        <i class="bi bi-pencil"></i> @(a.Status == AppointmentStatus.Pending ? "Change time & approve" : "Reschedule or edit")
+                    </a>
+                }
+
+                @if (canComplete)
+                {
+                    <form asp-action="Complete" asp-route-id="@a.Id" method="post" class="mb-3">
+                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-check2-circle"></i> Mark as completed</button>
+                    </form>
+                }
+
+                @if (canCancel)
+                {
+                    <form asp-action="Cancel" asp-route-id="@a.Id" method="post" data-confirm="Cancel this appointment?">
+                        @if (Model.IsTrainer)
+                        {
+                            <label for="cancelNote" class="form-label small">Reason for cancelling (optional)</label>
+                            <input id="cancelNote" name="note" maxlength="300" class="form-control form-control-sm mb-2" />
+                        }
+                        <button type="submit" class="btn btn-outline-danger w-100"><i class="bi bi-x-circle"></i> Cancel appointment</button>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+</div>

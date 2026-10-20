@@ -41,6 +41,7 @@ public class ClientDashboardViewModel
     public WorkoutPlan? WorkoutPlan { get; init; }
     public DietPlan? DietPlan { get; init; }
     public IReadOnlyList<WorkoutLog> RecentWorkouts { get; init; } = [];
+    public IReadOnlyList<Appointment> UpcomingAppointments { get; init; } = [];
 
     public IEnumerable<WorkoutExercise> TodaysExercises =>
         WorkoutPlan?.Exercises.Where(e => e.Day is null || e.Day == DateTime.Today.DayOfWeek) ?? [];
@@ -52,6 +53,8 @@ public class TrainerDashboardViewModel
     public IReadOnlyList<ClientSummary> Clients { get; init; } = [];
     public int ActivePlans { get; init; }
     public int ClientWorkoutsThisWeek { get; init; }
+    public IReadOnlyList<Appointment> TodaysAppointments { get; init; } = [];
+    public IReadOnlyList<Appointment> AppointmentRequests { get; init; } = [];
 }
 
 public record DeleteButton(string Controller, string Action, Dictionary<string, string> RouteValues, string Confirm, string? Label = null);

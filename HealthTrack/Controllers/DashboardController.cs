@@ -37,6 +37,7 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
             .OrderByDescending(m => m.Date).ThenByDescending(m => m.Id)
             .Select(m => m.HeightCm).FirstOrDefaultAsync();
 
+        var now = DateTime.Now;
         var weekWorkouts = db.WorkoutLogs.Where(l => l.ClientId == user.Id && l.Date >= weekStart);
 
         return View(new ClientDashboardViewModel
@@ -55,7 +56,11 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
                 .Where(p => p.ClientId == user.Id && p.IsActive && p.StartDate <= today)
                 .OrderByDescending(p => p.StartDate).FirstOrDefaultAsync(),
             RecentWorkouts = await db.WorkoutLogs.Where(l => l.ClientId == user.Id)
-                .OrderByDescending(l => l.Date).ThenByDescending(l => l.Id).Take(5).ToListAsync()
+                .OrderByDescending(l => l.Date).ThenByDescending(l => l.Id).Take(5).ToListAsync(),
+            UpcomingAppointments = await db.Appointments.Include(a => a.Trainer)
+                .Where(a => a.ClientId == user.Id && a.StartsAt > now
+                    && (a.Status == AppointmentStatus.Pending || a.Status == AppointmentStatus.Approved))
+                .OrderBy(a => a.StartsAt).Take(3).ToListAsync()
         });
     }
 
@@ -69,6 +74,8 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
         var clients = await ClientsController.GetClientSummariesAsync(db, user.Id);
         var clientIds = clients.Select(c => c.Id).ToList();
         var weekStart = Dates.StartOfWeek;
+        var now = DateTime.Now;
+        var tomorrow = DateTime.Today.AddDays(1);
 
         return View(new TrainerDashboardViewModel
         {
@@ -76,7 +83,15 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
             Clients = clients,
             ActivePlans = await db.WorkoutPlans.CountAsync(p => p.TrainerId == user.Id && p.IsActive)
                 + await db.DietPlans.CountAsync(p => p.TrainerId == user.Id && p.IsActive),
-            ClientWorkoutsThisWeek = await db.WorkoutLogs.CountAsync(l => clientIds.Contains(l.ClientId) && l.Date >= weekStart)
+            ClientWorkoutsThisWeek = await db.WorkoutLogs.CountAsync(l => clientIds.Contains(l.ClientId) && l.Date >= weekStart),
+            TodaysAppointments = await db.Appointments.Include(a => a.Client)
+                .Where(a => a.TrainerId == user.Id
+                    && (a.Status == AppointmentStatus.Approved || a.Status == AppointmentStatus.Completed)
+                    && a.StartsAt >= DateTime.Today && a.StartsAt < tomorrow)
+                .OrderBy(a => a.StartsAt).ToListAsync(),
+            AppointmentRequests = await db.Appointments.Include(a => a.Client)
+                .Where(a => a.TrainerId == user.Id && a.Status == AppointmentStatus.Pending && a.StartsAt > now)
+                .OrderBy(a => a.StartsAt).Take(5).ToListAsync()
         });
     }
 

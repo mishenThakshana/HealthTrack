@@ -14,6 +14,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<WorkoutLog> WorkoutLogs => Set<WorkoutLog>();
     public DbSet<MealLog> MealLogs => Set<MealLog>();
     public DbSet<HealthMeasurement> HealthMeasurements => Set<HealthMeasurement>();
+    public DbSet<Appointment> Appointments => Set<Appointment>();
 
     public IQueryable<ApplicationUser> UsersInRole(string role) =>
         Users.Where(u => UserRoles.Any(ur => ur.UserId == u.Id && Roles.Any(r => r.Id == ur.RoleId && r.Name == role)));
@@ -57,6 +58,17 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             m.Property(x => x.HeightCm).HasPrecision(5, 1);
             m.Property(x => x.BodyFatPercent).HasPrecision(4, 1);
             m.Ignore(x => x.Bmi);
+        });
+
+        builder.Entity<Appointment>(a =>
+        {
+            a.HasOne(x => x.Client).WithMany().HasForeignKey(x => x.ClientId).OnDelete(DeleteBehavior.NoAction);
+            a.HasOne(x => x.Trainer).WithMany().HasForeignKey(x => x.TrainerId).OnDelete(DeleteBehavior.NoAction);
+            a.Property(x => x.Status).HasConversion<string>().HasMaxLength(10);
+            a.Property(x => x.Mode).HasConversion<string>().HasMaxLength(10);
+            a.HasIndex(x => new { x.TrainerId, x.StartsAt });
+            a.HasIndex(x => new { x.ClientId, x.StartsAt });
+            a.Ignore(x => x.DurationMinutes);
         });
     }
 }

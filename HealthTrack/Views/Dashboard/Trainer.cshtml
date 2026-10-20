@@ -20,7 +20,7 @@
         <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-people", "My clients", Model.Clients.Count.ToString(), Model.Clients.Count == 0 ? "None assigned" : "Assigned to you")' /></div>
         <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-clipboard-check", "Active plans", Model.ActivePlans.ToString(), "Workout and diet")' /></div>
         <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-activity", "Client workouts", Model.ClientWorkoutsThisWeek.ToString(), "Logged this week")' /></div>
-        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-calendar-check", "Appointments today", "0", "None scheduled")' /></div>
+        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-calendar-check", "Appointments today", Model.TodaysAppointments.Count.ToString(), Model.TodaysAppointments.FirstOrDefault(a => a.EndsAt > DateTime.Now) is { } next ? $"Next at {next.StartsAt:HH:mm}" : Model.TodaysAppointments.Count == 0 ? "None scheduled" : "All done for today")' /></div>
     </div>
 
     <div class="row g-3">
@@ -47,8 +47,10 @@
             <div class="ht-panel mb-3">
                 <div class="ht-panel-header">
                     <h2 class="h6 mb-0"><i class="bi bi-calendar-event"></i> Appointment requests</h2>
+                    <a class="small" asp-controller="Appointments" asp-action="Index">All <i class="bi bi-chevron-right"></i></a>
                 </div>
-                <partial name="_EmptyState" model='new EmptyState("bi-inbox", "No appointment requests to review.")' />
+                <partial name="_AppointmentList" model="Model.AppointmentRequests"
+                         view-data='new ViewDataDictionary(ViewData) { ["IsTrainer"] = true, ["EmptyIcon"] = "bi-inbox", ["Empty"] = "No appointment requests to review." }' />
             </div>
             <partial name="_ProfileCard" model="Model.Profile" />
         </div>

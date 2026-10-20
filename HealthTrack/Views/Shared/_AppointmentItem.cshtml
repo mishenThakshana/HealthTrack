@@ -1,0 +1,42 @@
+@model Appointment
+@using HealthTrack.Helpers
+@{
+    var isTrainer = (bool)ViewData["IsTrainer"]!;
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+    var other = isTrainer ? Model.Client?.FullName : Model.Trainer?.FullName;
+}
+
+<li class="flex-wrap">
+    <div class="ht-date-chip"><span>@Model.StartsAt.ToString("MMM")</span><strong>@Model.StartsAt.Day</strong></div>
+    <div class="flex-grow-1 ht-min-w-0">
+        <a class="fw-semibold" asp-controller="Appointments" asp-action="Details" asp-route-id="@Model.Id">
+            @Model.StartsAt.ToString("ddd HH:mm")–@Model.EndsAt.ToString("HH:mm") · @other
+        </a>
+        <div class="small text-muted d-flex flex-wrap column-gap-3">
+            <span><i class="bi @Model.Mode.Icon()"></i> @Model.Mode.Label()</span>
+            <span class="text-truncate ht-appt-reason">@Model.Reason</span>
+        </div>
+    </div>
+    <div class="d-flex align-items-center gap-2 ms-auto">
+        @if (isTrainer && AppointmentRules.CanRespond(Model))
+        {
+            <form asp-controller="Appointments" asp-action="Approve" asp-route-id="@Model.Id" asp-route-returnUrl="@returnUrl" method="post">
+                <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-check-lg"></i> Approve</button>
+            </form>
+            <form asp-controller="Appointments" asp-action="Decline" asp-route-id="@Model.Id" asp-route-returnUrl="@returnUrl" method="post"
+                  data-confirm="Decline this appointment request?">
+                <button type="submit" class="btn btn-sm btn-outline-primary">Decline</button>
+            </form>
+        }
+        else if (isTrainer && AppointmentRules.CanComplete(Model))
+        {
+            <form asp-controller="Appointments" asp-action="Complete" asp-route-id="@Model.Id" asp-route-returnUrl="@returnUrl" method="post">
+                <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-check2-circle"></i> Complete</button>
+            </form>
+        }
+        else
+        {
+            <partial name="_AppointmentStatus" model="Model" />
+        }
+    </div>
+</li>

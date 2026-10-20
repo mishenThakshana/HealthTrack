@@ -121,8 +121,10 @@
             <div class="ht-panel mb-3">
                 <div class="ht-panel-header">
                     <h2 class="h6 mb-0"><i class="bi bi-calendar-check"></i> Upcoming appointments</h2>
+                    <a class="small" asp-controller="Appointments" asp-action="Index">@(Model.UpcomingAppointments.Count == 0 ? "Book" : "View all") <i class="bi bi-chevron-right"></i></a>
                 </div>
-                <partial name="_EmptyState" model='new EmptyState("bi-calendar", "You have no upcoming appointments.")' />
+                <partial name="_AppointmentList" model="Model.UpcomingAppointments"
+                         view-data='new ViewDataDictionary(ViewData) { ["IsTrainer"] = false, ["EmptyIcon"] = "bi-calendar", ["Empty"] = "You have no upcoming appointments." }' />
             </div>
             <partial name="_ProfileCard" model="Model.Profile" />
         </div>

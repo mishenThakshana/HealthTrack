@@ -1,0 +1,34 @@
+@model AppointmentSlotViewModel
+@using HealthTrack.Helpers
+@{
+    var durations = AppointmentRules.Durations.Select(d => new SelectListItem($"{d} min", d.ToString()));
+    var modes = Enum.GetValues<AppointmentMode>().Select(m => new SelectListItem(m.Label(), m.ToString()));
+}
+
+<div class="row g-2 mb-3">
+    <div class="col-7">
+        <label asp-for="Date" class="form-label"></label>
+        <input asp-for="Date" type="date" class="form-control"
+               min="@Dates.Today.ToString("yyyy-MM-dd")" max="@Dates.Today.AddDays(AppointmentRules.MaxDaysAhead).ToString("yyyy-MM-dd")" />
+        <span asp-validation-for="Date" class="text-danger small"></span>
+    </div>
+    <div class="col-5">
+        <label asp-for="Time" class="form-label"></label>
+        <input asp-for="Time" type="time" asp-format="{0:HH:mm}" step="900" class="form-control"
+               min="@AppointmentRules.OpensAt.ToString("HH:mm")" max="@AppointmentRules.ClosesAt.ToString("HH:mm")" />
+        <span asp-validation-for="Time" class="text-danger small"></span>
+    </div>
+</div>
+<div class="row g-2 mb-1">
+    <div class="col-5">
+        <label asp-for="DurationMinutes" class="form-label"></label>
+        <select asp-for="DurationMinutes" asp-items="durations" class="form-select"></select>
+        <span asp-validation-for="DurationMinutes" class="text-danger small"></span>
+    </div>
+    <div class="col-7">
+        <label asp-for="Mode" class="form-label"></label>
+        <select asp-for="Mode" asp-items="modes" class="form-select"></select>
+        <span asp-validation-for="Mode" class="text-danger small"></span>
+    </div>
+</div>
+<p class="form-text mb-3">Appointments run @AppointmentRules.OpensAt.ToString("HH:mm")–@AppointmentRules.ClosesAt.ToString("HH:mm"), up to @AppointmentRules.MaxDaysAhead days ahead.</p>

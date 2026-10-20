@@ -1,0 +1,56 @@
+@model AppointmentEditPageViewModel
+@{
+    var a = Model.Appointment;
+    ViewData["Title"] = "Edit appointment";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><a asp-action="Index">Appointments</a></li>
+            <li class="breadcrumb-item"><a asp-action="Details" asp-route-id="@a.Id">@a.StartsAt.ToString("d MMM yyyy")</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Edit</li>
+        </ol>
+    </nav>
+
+    <div class="ht-panel ht-form-panel mx-auto">
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="ht-icon"><i class="bi bi-calendar-event"></i></div>
+            <div>
+                <h1 class="h4 mb-0">Edit appointment</h1>
+                <div class="text-muted small">with @a.Client!.FullName</div>
+            </div>
+        </div>
+
+        <div class="ht-note mb-4">
+            <div class="small text-muted mb-1">Client's reason</div>
+            <div class="ht-prewrap">@a.Reason</div>
+        </div>
+
+        <form asp-action="Edit" asp-route-id="@a.Id" method="post" novalidate>
+            <partial name="_SlotFields" for="Form" />
+
+            <div class="mb-3">
+                <label asp-for="Form.Location" class="form-label"></label>
+                <input asp-for="Form.Location" class="form-control" placeholder="e.g. Studio 2, or a video call link" />
+                <span asp-validation-for="Form.Location" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-4">
+                <label asp-for="Form.TrainerNote" class="form-label"></label>
+                <textarea asp-for="Form.TrainerNote" class="form-control" rows="2" placeholder="Optional"></textarea>
+                <span asp-validation-for="Form.TrainerNote" class="text-danger small"></span>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save and confirm</button>
+                <a class="btn btn-outline-primary" asp-action="Details" asp-route-id="@a.Id">Cancel</a>
+            </div>
+            <p class="form-text mt-2 mb-0">Saving confirms the appointment, so a pending request becomes approved.</p>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

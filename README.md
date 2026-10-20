@@ -153,13 +153,22 @@ The seeded client is assigned to the seeded trainer, so you can sign in as the t
 
 These are for local development only. Don't use them in production.
 
+## Appointments
+
+- Clients request a consultation from the Appointments page by choosing a trainer (their assigned trainer is preselected), date, time, length (30, 45, 60 or 90 minutes), type (in person, video call or phone call) and what they'd like to discuss.
+- Appointments must start in the future, no more than 90 days ahead, and fit between 06:00 and 21:00.
+- A request can't overlap the trainer's approved appointments or the client's own pending or approved ones.
+- Trainers approve or decline requests, reschedule them (which also confirms them), add a location or meeting link and a note, cancel approved ones, and mark past ones as completed.
+- Clients can cancel their own pending or approved appointments before they start. Pending requests that are never answered show as "Expired" once their start time passes.
+- Times are stored in the server's local time.
+
 ## Who can do what
 
 | Role | Pages | What they can do |
 |------|-------|------------------|
 | Admin | Dashboard, Assignments | See user statistics and assign each client to a trainer |
-| Trainer | Dashboard, Clients, Plans | See assigned clients' measurements and logs; create, edit and delete workout and diet plans for them |
-| Client | Dashboard, Plans, Track | View plans from their trainer; log workouts, meals and measurements (weight, height, body fat, resting heart rate) |
+| Trainer | Dashboard, Clients, Plans, Appointments | See assigned clients' measurements and logs; create, edit and delete workout and diet plans for them; approve, decline, reschedule, cancel and complete appointment requests |
+| Client | Dashboard, Plans, Appointments, Track | View plans from their trainer; book consultations with a trainer and cancel them; log workouts, meals and measurements (weight, height, body fat, resting heart rate) |
 
 ## Project Structure
 
@@ -170,7 +179,7 @@ HealthTrack/
 └── HealthTrack/
     ├── Controllers/          # MVC controllers
     ├── Data/                 # DbContext, roles, startup seeding
-    ├── Helpers/              # Date and BMI helpers
+    ├── Helpers/              # Date, BMI and appointment rule helpers
     ├── Migrations/           # EF Core migrations (SQL Server)
     ├── Models/               # Domain and view models
     ├── Views/                # Razor views
@@ -189,7 +198,7 @@ HealthTrack/
 - [x] Switched database from MySQL to SQL Server (Docker)
 - [x] Role-based dashboards
 - [x] Workout & diet management
-- [ ] Appointment system
+- [x] Appointment system
 - [ ] Progress tracking & analytics
 - [ ] Notifications
 - [ ] Security hardening & data protection

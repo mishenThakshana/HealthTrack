@@ -1,0 +1,12 @@
+@model Appointment
+@{
+    var label = HealthTrack.Helpers.AppointmentRules.StatusLabel(Model);
+    var css = label switch
+    {
+        "Pending" => "ht-badge-pending",
+        "Approved" => "ht-badge-active",
+        "Completed" => "ht-badge-completed",
+        _ => "ht-badge-inactive"
+    };
+}
+<span class="badge rounded-pill @css">@label</span>

@@ -14,7 +14,7 @@
         .Select(part => char.ToUpperInvariant(part[0])));
     var role = Roles.All.FirstOrDefault(User.IsInRole) ?? "Member";
 
-    <div class="dropdown ms-auto order-md-last">
+    <div class="dropdown ms-auto order-lg-last">
         <button class="ht-user-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
             <span class="ht-avatar">@initials</span>
             <span class="ht-user-text d-none d-md-flex">
@@ -45,7 +45,7 @@
 }
 else
 {
-    <div class="d-flex align-items-center gap-2 ms-auto order-md-last">
+    <div class="d-flex align-items-center gap-2 ms-auto order-lg-last">
         <a class="ht-nav-login" asp-controller="Account" asp-action="Login">Login</a>
         <a class="btn btn-light btn-sm" asp-controller="Account" asp-action="Register">Register</a>
     </div>

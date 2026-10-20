@@ -483,7 +483,7 @@ main {
   background-color: var(--ht-orange-soft);
 }
 
-@media (max-width: 767.98px) {
+@media (max-width: 991.98px) {
   .ht-navbar .navbar-nav {
     padding: .5rem 0;
   }
@@ -582,7 +582,7 @@ main {
   margin-top: .25rem;
 }
 
-@media (max-width: 767.98px) {
+@media (max-width: 991.98px) {
   .ht-navbar .dropdown-menu {
     background-color: #fff;
   }
@@ -598,4 +598,29 @@ main {
   letter-spacing: 0;
   font-weight: 400;
   color: var(--ht-muted);
+}
+
+.ht-badge-pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.ht-badge-completed {
+  background-color: #e0f2fe;
+  color: #075985;
+}
+
+.ht-min-w-0 {
+  min-width: 0;
+}
+
+.ht-appt-reason {
+  max-width: 28rem;
+}
+
+.ht-note {
+  background-color: var(--ht-orange-light);
+  border: 1px solid var(--ht-border);
+  border-radius: .5rem;
+  padding: .75rem 1rem;
 }
