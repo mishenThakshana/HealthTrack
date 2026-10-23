@@ -210,6 +210,24 @@ main {
   box-shadow: 0 0 0 .25rem rgba(234, 88, 12, .25);
 }
 
+.ht-role-section {
+  padding: 1rem;
+  border: 1px solid var(--ht-border);
+  border-radius: .75rem;
+  background-color: var(--ht-orange-light);
+}
+
+/* Match the height of the floating-label fields around the list. */
+.ht-role-section [data-repeat-item] > .form-control,
+.ht-role-section [data-repeat-item] > .btn {
+  min-height: calc(3.5rem + calc(var(--bs-border-width) * 2));
+}
+
+[data-repeat-remove] {
+  border-color: var(--bs-border-color);
+  color: var(--ht-muted);
+}
+
 .input-validation-error {
   border-color: var(--bs-danger) !important;
 }

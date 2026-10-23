@@ -1,0 +1,23 @@
+@model HealthTrack.Models.ClientProfile?
+
+<div class="ht-panel">
+    <div class="ht-panel-header">
+        <h2 class="h6 mb-0"><i class="bi bi-heart-pulse"></i> About this client</h2>
+        <span class="small text-muted"><i class="bi bi-lock"></i> Confidential</span>
+    </div>
+    @if (Model is null)
+    {
+        <p class="text-muted small mb-0">The client hasn't added their goal and health details yet.</p>
+    }
+    else
+    {
+        <dl class="row ht-profile mb-0">
+            <dt class="col-sm-3">Main goal</dt>
+            <dd class="col-sm-9">@Model.FitnessGoal</dd>
+            <dt class="col-sm-3">Activity</dt>
+            <dd class="col-sm-9">@Model.ActivityLevel</dd>
+            <dt class="col-sm-3">Health notes</dt>
+            <dd class="col-sm-9 text-break">@(Model.HealthConditions ?? "No injuries, conditions or allergies noted.")</dd>
+        </dl>
+    }
+</div>

@@ -23,7 +23,7 @@ public class AccountController(
     ILogger<AccountController> logger) : Controller
 {
     public static readonly string[] RegisterableRoles = [Roles.Client, Roles.Trainer, Roles.Professional];
-    public static readonly string[] Genders = ["Male", "Female", "Other", "Prefer not to say"];
+    public static readonly string[] Genders = ["Male", "Female"];
 
     [HttpGet, AllowAnonymous]
     public IActionResult Register()
@@ -44,8 +44,14 @@ public class AccountController(
         if (model.Gender is not null && !Genders.Contains(model.Gender))
             ModelState.AddModelError(nameof(model.Gender), "Please choose a valid option.");
 
-        if (model.DateOfBirth is { } dob && (dob > DateOnly.FromDateTime(DateTime.Today) || dob.Year < 1900))
+        var isClient = model.Role == Roles.Client;
+        if (!isClient)
+            ModelState.Remove(nameof(model.DateOfBirth));
+        else if (model.DateOfBirth is { } dob && (dob > DateOnly.FromDateTime(DateTime.Today) || dob.Year < 1900))
             ModelState.AddModelError(nameof(model.DateOfBirth), "Please enter a valid date of birth.");
+
+        // Drops the sections for other roles. Clients add their health details later, from their dashboard or My account.
+        RoleProfiles.Validate(ModelState, model.Role, new(), model.Trainer, model.Professional);
 
         if (!ModelState.IsValid)
             return View(model);
@@ -55,7 +61,7 @@ public class AccountController(
             UserName = model.Email.Trim(),
             Email = model.Email.Trim(),
             FullName = model.FullName.Trim(),
-            DateOfBirth = model.DateOfBirth,
+            DateOfBirth = isClient ? model.DateOfBirth : null,
             Gender = model.Gender,
             LastLoginAt = DateTime.UtcNow,
             PrivacyAcceptedAt = DateTime.UtcNow
@@ -70,6 +76,11 @@ public class AccountController(
         }
 
         await userManager.AddToRoleAsync(user, model.Role);
+        if (!isClient)
+        {
+            await RoleProfiles.ApplyAsync(db, user.Id, model.Role, new(), model.Trainer, model.Professional);
+            await db.SaveChangesAsync();
+        }
         logger.LogInformation("New {Role} account registered: {UserId}", model.Role, user.Id);
         await SendConfirmationAsync(user);
 
@@ -149,13 +160,7 @@ public class AccountController(
         if (user is null)
             return Challenge();
 
-        return View(await BuildManageAsync(user, new ProfileFormViewModel
-        {
-            FullName = user.FullName,
-            Email = user.Email ?? string.Empty,
-            DateOfBirth = user.DateOfBirth,
-            Gender = user.Gender
-        }));
+        return View(await BuildManageAsync(user, ToProfileForm(user)));
     }
 
     [HttpPost, Authorize, ValidateAntiForgeryToken]
@@ -166,10 +171,15 @@ public class AccountController(
         if (user is null)
             return Challenge();
 
-        if (form.Gender is not null && !Genders.Contains(form.Gender))
+        var isAdmin = User.IsInRole(Roles.Admin);
+        if (isAdmin)
+            ModelState.Remove("Profile.Gender");
+        else if (form.Gender is not null && !Genders.Contains(form.Gender))
             ModelState.AddModelError("Profile.Gender", "Please choose a valid option.");
         if (form.DateOfBirth is { } dob && (dob > DateOnly.FromDateTime(DateTime.Today) || dob.Year < 1900))
             ModelState.AddModelError("Profile.DateOfBirth", "Please enter a valid date of birth.");
+        else if (form.DateOfBirth is null && User.IsInRole(Roles.Client))
+            ModelState.AddModelError("Profile.DateOfBirth", "Please enter your date of birth.");
 
         var email = form.Email.Trim();
         var emailChanged = !string.Equals(email, user.Email, StringComparison.OrdinalIgnoreCase);
@@ -183,7 +193,7 @@ public class AccountController(
         var oldEmail = user.Email;
         user.FullName = form.FullName.Trim();
         user.DateOfBirth = form.DateOfBirth;
-        user.Gender = form.Gender;
+        user.Gender = isAdmin ? null : form.Gender;
         if (emailChanged)
         {
             user.Email = email;
@@ -240,13 +250,34 @@ public class AccountController(
                     error.Code == nameof(IdentityErrorDescriber.PasswordMismatch) ? "Your current password is incorrect." : error.Description);
         }
 
-        return View(nameof(Manage), await BuildManageAsync(user, new ProfileFormViewModel
-        {
-            FullName = user.FullName,
-            Email = user.Email ?? string.Empty,
-            DateOfBirth = user.DateOfBirth,
-            Gender = user.Gender
-        }, form));
+        return View(nameof(Manage), await BuildManageAsync(user, ToProfileForm(user), form));
+    }
+
+    [HttpPost, Authorize(Roles = Roles.Client + "," + Roles.Providers), ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateDetails(
+        [Bind(Prefix = RoleProfiles.ClientPrefix)] ClientProfileFormViewModel client,
+        [Bind(Prefix = RoleProfiles.TrainerPrefix)] TrainerProfileFormViewModel trainer,
+        [Bind(Prefix = RoleProfiles.ProfessionalPrefix)] ProfessionalProfileFormViewModel professional)
+    {
+        var user = await userManager.GetUserAsync(User);
+        if (user is null)
+            return Challenge();
+
+        var role = (await userManager.GetRolesAsync(user)).FirstOrDefault() ?? string.Empty;
+        ModelState.Clear();
+        TryValidateModel(client, RoleProfiles.ClientPrefix);
+        TryValidateModel(trainer, RoleProfiles.TrainerPrefix);
+        TryValidateModel(professional, RoleProfiles.ProfessionalPrefix);
+        RoleProfiles.Validate(ModelState, role, client, trainer, professional);
+
+        if (!ModelState.IsValid)
+            return View(nameof(Manage), await BuildManageAsync(user, ToProfileForm(user), details: (client, trainer, professional)));
+
+        await RoleProfiles.ApplyAsync(db, user.Id, role, client, trainer, professional);
+        await db.SaveChangesAsync();
+
+        TempData["Success"] = "Your details have been saved.";
+        return RedirectToAction(nameof(Manage), null, "details");
     }
 
     [HttpPost, Authorize, ValidateAntiForgeryToken]
@@ -286,6 +317,13 @@ public class AccountController(
                 user.CreatedAt, user.LastLoginAt, user.PrivacyAcceptedAt,
                 NotificationSettings = new { user.EmailAppointments, user.EmailReminders, user.EmailUpdates, user.RemindWorkouts, user.RemindMeals }
             },
+            HealthDetails = await db.ClientProfiles.Where(p => p.UserId == id)
+                .Select(p => new { p.FitnessGoal, p.ActivityLevel, p.HealthConditions, p.UpdatedAt }).FirstOrDefaultAsync(),
+            CoachingDetails = await db.TrainerProfiles.Where(p => p.UserId == id)
+                .Select(p => new { p.Specialization, p.YearsOfExperience, Qualifications = p.Qualifications.OrderBy(q => q.Id).Select(q => q.Name).ToList(), p.UpdatedAt })
+                .FirstOrDefaultAsync(),
+            PracticeDetails = await db.ProfessionalProfiles.Where(p => p.UserId == id)
+                .Select(p => new { p.Profession, p.RegistrationNumber, p.Workplace, p.YearsOfExperience, p.UpdatedAt }).FirstOrDefaultAsync(),
             Measurements = await db.HealthMeasurements.Where(m => m.ClientId == id).OrderBy(m => m.Date)
                 .Select(m => new { m.Date, m.WeightKg, m.HeightCm, m.BodyFatPercent, m.RestingHeartRate, m.Notes, m.CreatedAt }).ToListAsync(),
             Workouts = await db.WorkoutLogs.Where(l => l.ClientId == id).OrderBy(l => l.Date)
@@ -462,24 +500,42 @@ public class AccountController(
         }
     }
 
-    private async Task<ManageAccountViewModel> BuildManageAsync(
-        ApplicationUser user, ProfileFormViewModel profile, ChangePasswordViewModel? password = null) => new()
+    private static ProfileFormViewModel ToProfileForm(ApplicationUser user) => new()
     {
-        Profile = profile,
-        Password = password ?? new ChangePasswordViewModel(),
-        Notifications = new NotificationSettingsViewModel
-        {
-            EmailAppointments = user.EmailAppointments,
-            EmailReminders = user.EmailReminders,
-            EmailUpdates = user.EmailUpdates,
-            RemindWorkouts = user.RemindWorkouts,
-            RemindMeals = user.RemindMeals
-        },
-        EmailConfirmed = user.EmailConfirmed,
-        IsClient = await userManager.IsInRoleAsync(user, Roles.Client),
-        Role = (await userManager.GetRolesAsync(user)).FirstOrDefault() is { } role ? Roles.DisplayName(role) : "Member",
-        TrainerName = user.TrainerId is null ? null : (await userManager.FindByIdAsync(user.TrainerId))?.FullName,
-        MemberSince = user.CreatedAt,
-        LastLoginAt = user.LastLoginAt
+        FullName = user.FullName,
+        Email = user.Email ?? string.Empty,
+        DateOfBirth = user.DateOfBirth,
+        Gender = user.Gender
     };
+
+    private async Task<ManageAccountViewModel> BuildManageAsync(
+        ApplicationUser user, ProfileFormViewModel profile, ChangePasswordViewModel? password = null,
+        (ClientProfileFormViewModel Client, TrainerProfileFormViewModel Trainer, ProfessionalProfileFormViewModel Professional)? details = null)
+    {
+        var (client, trainer, professional) = details ?? await RoleProfiles.LoadFormsAsync(db, user.Id);
+        var role = (await userManager.GetRolesAsync(user)).FirstOrDefault();
+        return new ManageAccountViewModel
+        {
+            Profile = profile,
+            Password = password ?? new ChangePasswordViewModel(),
+            Client = client,
+            Trainer = trainer,
+            Professional = professional,
+            RoleKey = role ?? string.Empty,
+            Notifications = new NotificationSettingsViewModel
+            {
+                EmailAppointments = user.EmailAppointments,
+                EmailReminders = user.EmailReminders,
+                EmailUpdates = user.EmailUpdates,
+                RemindWorkouts = user.RemindWorkouts,
+                RemindMeals = user.RemindMeals
+            },
+            EmailConfirmed = user.EmailConfirmed,
+            IsClient = role == Roles.Client,
+            Role = role is not null ? Roles.DisplayName(role) : "Member",
+            TrainerName = user.TrainerId is null ? null : (await userManager.FindByIdAsync(user.TrainerId))?.FullName,
+            MemberSince = user.CreatedAt,
+            LastLoginAt = user.LastLoginAt
+        };
+    }
 }

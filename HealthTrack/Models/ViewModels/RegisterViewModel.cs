@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using HealthTrack.Helpers;
 
 namespace HealthTrack.Models.ViewModels;
 
@@ -25,15 +26,21 @@ public class RegisterViewModel
     [Display(Name = "I am a")]
     public string Role { get; set; } = Data.Roles.Client;
 
+    // Only asked of clients.
+    [Required(ErrorMessage = "Please enter your date of birth.")]
     [DataType(DataType.Date)]
     [Display(Name = "Date of birth")]
     public DateOnly? DateOfBirth { get; set; }
 
+    public TrainerProfileFormViewModel Trainer { get; set; } = new();
+    public ProfessionalProfileFormViewModel Professional { get; set; } = new();
+
+    [Required(ErrorMessage = "Please select your gender.")]
     [StringLength(20)]
     public string? Gender { get; set; }
 
     [Required(ErrorMessage = "Please accept the privacy policy to create an account.")]
-    [Range(typeof(bool), "true", "true", ErrorMessage = "Please accept the privacy policy to create an account.")]
+    [MustBeTrue(ErrorMessage = "Please accept the privacy policy to create an account.")]
     [Display(Name = "I have read and accept the privacy policy")]
     public bool AcceptPrivacy { get; set; }
 }

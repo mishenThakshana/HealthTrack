@@ -1,0 +1,34 @@
+@model TrainerProfileFormViewModel
+@using HealthTrack.Controllers
+@{
+    // Rendered with <partial for="Trainer" />, so names come out as Trainer.Qualifications[0], [1], ...
+    var name = Html.NameFor(m => m.Qualifications).ToString();
+    var id = Html.IdFor(m => m.Qualifications).ToString();
+    List<string?> items = Model.Qualifications.Count == 0 ? [null] : Model.Qualifications;
+}
+
+<div data-repeat-list data-repeat-max="@RoleProfiles.MaxQualifications">
+    <label class="form-label small fw-semibold mb-1" for="@(id)_0_">@Html.DisplayNameFor(m => m.Qualifications)</label>
+    @for (var i = 0; i < items.Count; i++)
+    {
+        <div class="input-group mb-2" data-repeat-item>
+            @if (i == 0)
+            {
+                <input class="form-control" id="@(id)_0_" name="@(name)[0]" value="@items[0]" maxlength="100" placeholder="e.g. Level 3 Personal Trainer"
+                       data-val="true" data-val-required="Add at least one qualification." />
+            }
+            else
+            {
+                <input class="form-control" id="@(id)_@(i)_" name="@(name)[@i]" value="@items[i]" maxlength="100" placeholder="Another qualification" />
+            }
+            <button type="button" class="btn btn-outline-secondary" data-repeat-remove aria-label="Remove this qualification" hidden="@(items.Count > 1 ? null : "hidden")">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    }
+    <span class="text-danger small d-block" data-valmsg-for="@(name)[0]" data-valmsg-replace="true"></span>
+    <span asp-validation-for="Qualifications" class="text-danger small d-block"></span>
+    <button type="button" class="btn btn-link btn-sm p-0" data-repeat-add hidden="@(items.Count >= RoleProfiles.MaxQualifications ? "hidden" : null)">
+        <i class="bi bi-plus-lg"></i> Add another qualification
+    </button>
+</div>

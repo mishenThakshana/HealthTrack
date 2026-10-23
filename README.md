@@ -27,6 +27,7 @@ HealthTrack is a digital platform designed to help individuals track and improve
 ### Appointment System
 - Clients can schedule consultations with trainers or healthcare professionals.
 - Trainers can approve, update, or cancel appointments.
+- Administrators can manage every appointment.
 
 ### Progress Tracking & Analytics
 - Clients can see trends in weight, BMI, calories burned, or other health metrics.
@@ -153,18 +154,35 @@ dotnet dev-certs https --trust
 
 ## Seeded accounts
 
-In Development, these accounts are created on startup if they don't already exist. They are defined under `SeedUsers` in `HealthTrack/appsettings.Development.json`.
+In Development, this account is created on startup if it doesn't already exist. It is defined under `SeedUsers` in `HealthTrack/appsettings.Development.json`.
 
 | Role | Email | Password | Name |
 |------|-------|----------|------|
 | Admin | `admin@healthtrack.local` | `Admin@12345` | System Administrator |
-| Trainer | `trainer@healthtrack.local` | `Trainer@12345` | Alex Morgan |
-| Client | `client@healthtrack.local` | `Client@12345` | Jamie Silva |
-| Health professional | `doctor@healthtrack.local` | `Doctor@12345` | Dr. Sam Patel |
 
-The seeded client is assigned to the seeded trainer, so you can sign in as the trainer and create plans for Jamie straight away.
+Clients, trainers and health professionals sign up through the Register page. You can add more seed accounts to `SeedUsers`. Each entry takes `Email`, `Password`, `FullName` and `Role`, plus the optional details they'd enter at registration (for example `TrainerEmail`, `FitnessGoal`, `Specialization` and `Qualifications`).
 
 These are for local development only. Don't use them in production.
+
+## Registration and role details
+
+- **Everyone:** full name, email, gender (Male or Female), password, and accepting the privacy policy. Admins can't register themselves and don't have a gender.
+- **Clients** also give their date of birth. Their health details (main goal, how active they are, and any injuries, health conditions or allergies, encrypted) are added afterwards: the dashboard asks for them and they're edited under My account.
+- **Trainers** give their specialization, years of experience and one or more qualifications ("Add another qualification", up to 10; stored one per row in `TrainerQualifications`).
+- **Health professionals** give their profession, registration or licence number, years of experience and workplace (optional).
+- The page only shows the section for the chosen account type. The other sections aren't validated or saved.
+- The details are stored in `ClientProfiles`, `TrainerProfiles` and `ProfessionalProfiles`. Each table has a one-to-one link to `AspNetUsers` (a unique `UserId`), and its row is deleted with the user. `TrainerQualifications` is one-to-many from `TrainerProfiles`.
+- **Where they're used:**
+  - Dashboards' profile cards.
+  - The booking list ("Alex Morgan — Strength and muscle").
+  - The appointment page.
+  - The client's details for their trainer and health professionals (Clients and Progress pages).
+  - The admin's user page shows trainers' and professionals' details; client health details stay private.
+  - The data export.
+- **Editing and missing details:**
+  - Everyone can edit their details under **My account**.
+  - New clients, accounts created by an admin, and accounts whose role an admin changes are asked to add the details on their dashboard.
+  - A role change removes the details kept for the old role.
 
 ## Appointments
 
@@ -172,6 +190,7 @@ These are for local development only. Don't use them in production.
 - Appointments must start in the future, no more than 90 days ahead, and fit between 06:00 and 21:00.
 - A request can't overlap the trainer's approved appointments or the client's own pending or approved ones.
 - Trainers and health professionals approve or decline requests, reschedule them (which also confirms them), add a location or meeting link and a note, cancel approved ones, and mark past ones as completed.
+- Admins see every appointment on the Appointments page and can do everything a trainer can: approve, decline, reschedule, complete and cancel. Both the client and the trainer or professional are notified, and the change is shown as made by "An administrator".
 - Clients can cancel their own pending or approved appointments before they start. Pending requests that are never answered show as "Expired" once their start time passes.
 - Times are stored in the server's local time.
 
@@ -205,7 +224,7 @@ These are for local development only. Don't use them in production.
 ## Security and data protection
 
 - **Encryption at rest:**
-  - What's encrypted: measurement and workout notes, meal descriptions, appointment reasons and notes, feedback and notification messages. They're encrypted in the database with ASP.NET Core Data Protection (AES-256 with HMAC) and stored with an `enc:` prefix. Older plain-text rows are encrypted automatically at startup.
+  - What's encrypted: clients' injuries, health conditions and allergies, measurement and workout notes, meal descriptions, appointment reasons and notes, feedback and notification messages. They're encrypted in the database with ASP.NET Core Data Protection (AES-256 with HMAC) and stored with an `enc:` prefix. Older plain-text rows are encrypted automatically at startup.
   - Numbers such as weight stay unencrypted so charts and reports can be calculated. Use SQL Server TDE or disk encryption to cover everything.
 - **Encryption keys:**
   - The keys live in `~/.healthtrack/keys` (override with `DataProtection:KeysPath`). **Back this folder up.** Without it, encrypted fields and existing sign-ins can't be read.
@@ -280,3 +299,4 @@ HealthTrack/
 - [x] My account page (profile and password)
 - [x] Emails (Mailpit) and notifications
 - [x] Security hardening & data protection
+- [x] Role-specific registration and profiles

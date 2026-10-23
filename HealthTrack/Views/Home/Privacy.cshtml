@@ -1,52 +1,76 @@
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @{
     ViewData["Title"] = "Privacy policy";
+    var contactEmail = Configuration["ContactEmail"];
 }
 
 <div class="container py-5">
     <div class="ht-prose mx-auto">
         <h1 class="h2 ht-page-header">Privacy policy</h1>
-        <p class="text-muted">HealthTrack stores personal health information, so we keep it to what the app needs and limit who can see it.</p>
+        <p class="text-muted">HealthTrack holds information about your health, so we only keep what the app needs and only let the right people see it.</p>
 
-        <h2 class="h5 mt-4">What we store</h2>
+        <h2 class="h5 mt-4">What we keep</h2>
         <ul>
-            <li><strong>Account details:</strong> name, email, password (stored only as a salted hash), date of birth, gender, role and sign-in times.</li>
-            <li><strong>Health data you enter:</strong> measurements (weight, height, body fat, resting heart rate), workouts, meals and notes.</li>
-            <li><strong>Coaching data:</strong> workout and diet plans, appointments, feedback and notifications.</li>
+            <li><strong>About you:</strong> your name, email, gender, account type and when you last signed in. Clients also give their date of birth.</li>
+            <li><strong>Your health (clients):</strong> your main goal, how active you are, and any injuries, health conditions or allergies you tell us about.</li>
+            <li><strong>What you track (clients):</strong> your weight, height, body fat, resting heart rate, workouts, meals and any notes you add.</li>
+            <li><strong>Your work (trainers and health professionals):</strong> your specialization or profession, years of experience, qualifications, registration number and workplace.</li>
+            <li><strong>Your coaching:</strong> workout and diet plans, appointments, feedback and notifications.</li>
         </ul>
 
-        <h2 class="h5 mt-4">Why we use it</h2>
-        <p>Only to provide HealthTrack: tracking your progress, letting your trainer plan for you, booking consultations and sending the reminders you choose. We don't sell data, use it for advertising, or share it with third parties.</p>
+        <h2 class="h5 mt-4">Why we keep it</h2>
+        <p>Only to run HealthTrack for you: showing your progress, letting your trainer plan for you, booking appointments and sending the reminders you ask for. We never sell your information, use it for ads or give it to other companies.</p>
 
         <h2 class="h5 mt-4">Who can see it</h2>
         <ul>
             <li><strong>You</strong> can see everything you've entered.</li>
-            <li><strong>Your assigned trainer</strong> can see your measurements, logs and progress, and manage your plans.</li>
-            <li><strong>A health professional</strong> can see your progress only after approving an appointment with you.</li>
-            <li><strong>Administrators</strong> manage accounts and see summary reports. They can't open an individual client's progress page.</li>
+            <li><strong>Your trainer</strong> can see your health details, measurements, workouts, meals and progress, and make plans for you.</li>
+            <li><strong>A health professional</strong> can see your health details and progress only once they've accepted an appointment with you.</li>
+            <li><strong>Clients</strong> see a trainer's specialization and experience, or a health professional's profession and workplace, when booking an appointment.</li>
+            <li><strong>Administrators</strong> look after accounts, check trainers' and health professionals' details, and see activity numbers in reports, such as how many workouts you logged. They can't open your health details, progress page, notes or meals.</li>
         </ul>
 
-        <h2 class="h5 mt-4">How we protect it</h2>
+        <h2 class="h5 mt-4">Encryption: how we lock your information</h2>
+        <p>Encryption turns your words into scrambled text that can only be turned back with a secret key. HealthTrack keeps that key separate from the stored data.</p>
         <ul>
-            <li>Every page needs you to be signed in, and each role can only reach its own data.</li>
-            <li>Notes, meal descriptions, appointment details, feedback and notification messages are encrypted in the database.</li>
-            <li>Connections use HTTPS in production, sign-in is rate-limited, and accounts lock after repeated failed attempts.</li>
-            <li>Access to client data by trainers and professionals is recorded in the application log.</li>
+            <li><strong>What we encrypt:</strong> any injuries, health conditions or allergies you tell us about, your workout and measurement notes, what you ate, why you booked an appointment, notes from your trainer or health professional, feedback, and notification messages.</li>
+            <li><strong>What that means:</strong> even if someone got a copy of our stored data, they would only see scrambled text, not your words.</li>
+            <li><strong>When it's unlocked:</strong> only when you, or someone allowed to see it, opens the page. You see it as normal.</li>
+            <li><strong>Your password</strong> is never kept at all. We keep a one-way code made from it, which can check your password but can't be turned back into it. Not even administrators can see your password.</li>
+            <li><strong>Numbers</strong> such as weight, calories and workout minutes aren't scrambled, so we can draw your charts. They're still protected by everything below.</li>
+        </ul>
+
+        <h2 class="h5 mt-4">Other ways we keep it safe</h2>
+        <ul>
+            <li>You need to sign in to see any health information, and each person only sees what their role allows.</li>
+            <li>After 5 wrong passwords, your account is locked for 15 minutes to stop people guessing.</li>
+            <li>You're signed out after 8 hours without using the app.</li>
+            <li>The connection between your device and HealthTrack is secured, so others can't read what you send.</li>
+            <li>We keep a record each time a trainer or health professional looks at a client's information.</li>
         </ul>
 
         <h2 class="h5 mt-4">How long we keep it</h2>
-        <p>Your health data is kept while your account exists. Read notifications are removed after 90 days and all notifications after a year.</p>
+        <p>Your health information stays as long as you have an account. Notifications you've read are removed after 90 days, and all notifications after a year.</p>
 
-        <h2 class="h5 mt-4">Your rights</h2>
+        <h2 class="h5 mt-4">Your choices</h2>
         <ul>
-            <li><strong>Access and portability:</strong> download all your data from <a asp-controller="Account" asp-action="Manage" asp-fragment="delete">My account</a>.</li>
-            <li><strong>Correction:</strong> edit your profile and any entry you've logged.</li>
-            <li><strong>Erasure:</strong> clients can permanently delete their account and data from My account. Other users can ask an administrator.</li>
-            <li><strong>Choice:</strong> turn email reminders and updates on or off under My account → Notifications.</li>
+            <li><strong>Get a copy:</strong> download everything we keep about you from <a asp-controller="Account" asp-action="Manage" asp-fragment="delete">My account</a>.</li>
+            <li><strong>Fix mistakes:</strong> change your profile and any entry you've added.</li>
+            <li><strong>Delete it:</strong> clients can delete their account and all their information from My account. It can't be undone. Trainers and health professionals can ask an administrator to close their account.</li>
+            <li><strong>Choose your emails:</strong> turn reminders and update emails on or off under My account → Notifications.</li>
         </ul>
 
         <h2 class="h5 mt-4">Cookies</h2>
-        <p>We only use the cookies needed to keep you signed in and to protect forms. There are no tracking or advertising cookies.</p>
+        <p>Cookies are small files your browser keeps. We only use them to keep you signed in and to make sure forms really come from you. We don't use cookies to track you or show ads.</p>
 
-        <p class="text-muted small mt-4">Questions about your data? Contact your HealthTrack administrator.</p>
+        <h2 class="h5 mt-4">Contact us</h2>
+        @if (!string.IsNullOrWhiteSpace(contactEmail))
+        {
+            <p>Questions about your information, or want something changed or deleted? Email us at <a href="mailto:@contactEmail">@contactEmail</a>.</p>
+        }
+        else
+        {
+            <p>Questions about your information? Contact your HealthTrack administrator.</p>
+        }
     </div>
 </div>

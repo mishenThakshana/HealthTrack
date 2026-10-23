@@ -3,7 +3,7 @@
 @{
     var a = Model.Appointment;
     var other = Model.IsProvider ? a.Client! : a.Trainer!;
-    ViewData["Title"] = $"Appointment with {other.FullName}";
+    ViewData["Title"] = Model.IsAdmin ? $"{a.Client!.FullName} with {a.Trainer!.FullName}" : $"Appointment with {other.FullName}";
     var canRespond = Model.IsProvider && AppointmentRules.CanRespond(a);
     var canReschedule = Model.IsProvider && AppointmentRules.CanReschedule(a);
     var canCancel = AppointmentRules.CanCancel(a, Model.IsProvider);
@@ -31,9 +31,26 @@
                 </div>
 
                 <dl class="row ht-profile mb-0">
+                    @if (Model.IsAdmin)
+                    {
+                        <dt class="col-sm-4">With</dt>
+                        <dd class="col-sm-8">
+                            @a.Trainer!.FullName
+                            @if (ProfileOptions.Headline(a.Trainer) is { } providerHeadline)
+                            {
+                                <span class="small d-block">@providerHeadline</span>
+                            }
+                            <span class="text-muted small d-block text-break">@a.Trainer.Email</span>
+                        </dd>
+                    }
+
                     <dt class="col-sm-4">@(Model.IsProvider ? "Client" : "With")</dt>
                     <dd class="col-sm-8">
-                        @if (Model.IsProvider && other.TrainerId == a.TrainerId)
+                        @if (Model.IsAdmin)
+                        {
+                            <a asp-controller="Users" asp-action="Edit" asp-route-id="@other.Id">@other.FullName</a>
+                        }
+                        else if (Model.IsProvider && other.TrainerId == a.TrainerId)
                         {
                             <a asp-controller="Clients" asp-action="Details" asp-route-id="@other.Id">@other.FullName</a>
                         }
@@ -45,6 +62,10 @@
                         else
                         {
                             @other.FullName
+                        }
+                        @if (!Model.IsProvider && ProfileOptions.Headline(other) is { } headline)
+                        {
+                            <span class="small d-block">@headline</span>
                         }
                         <span class="text-muted small d-block text-break">@other.Email</span>
                     </dd>
@@ -66,7 +87,7 @@
 
                     @if (a.TrainerNote is not null)
                     {
-                        <dt class="col-sm-4">Note from @(Model.IsProvider ? "you" : a.Trainer!.FullName)</dt>
+                        <dt class="col-sm-4">Note from @(Model.IsProvider && !Model.IsAdmin ? "you" : a.Trainer!.FullName)</dt>
                         <dd class="col-sm-8 ht-prewrap">@a.TrainerNote</dd>
                     }
 
@@ -76,7 +97,7 @@
                     @if (a.Status == AppointmentStatus.Cancelled)
                     {
                         <dt class="col-sm-4">Cancelled by</dt>
-                        <dd class="col-sm-8">@(a.CancelledByClient ? a.Client!.FullName : a.Trainer!.FullName) on @a.UpdatedAt.ToLocalTime().ToString("d MMM yyyy")</dd>
+                        <dd class="col-sm-8">@(a.CancelledByAdmin ? "An administrator" : a.CancelledByClient ? a.Client!.FullName : a.Trainer!.FullName) on @a.UpdatedAt.ToLocalTime().ToString("d MMM yyyy")</dd>
                     }
                 </dl>
             </div>

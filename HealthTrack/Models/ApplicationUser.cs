@@ -25,4 +25,8 @@ public class ApplicationUser : IdentityUser
 
     public string? TrainerId { get; set; }
     public ApplicationUser? Trainer { get; set; }
+
+    public ClientProfile? ClientProfile { get; set; }
+    public TrainerProfile? TrainerProfile { get; set; }
+    public ProfessionalProfile? ProfessionalProfile { get; set; }
 }

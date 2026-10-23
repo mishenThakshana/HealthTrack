@@ -1,7 +1,7 @@
 @model AppointmentsPageViewModel
 @{
     ViewData["Title"] = "Appointments";
-    var list = new ViewDataDictionary(ViewData) { ["IsProvider"] = Model.IsProvider };
+    var list = new ViewDataDictionary(ViewData) { ["IsProvider"] = Model.IsProvider, ["IsAdmin"] = Model.IsAdmin };
 }
 
 <div class="container py-4">
@@ -9,7 +9,8 @@
         <div>
             <h1 class="h3 mb-1">Appointments</h1>
             <p class="text-muted mb-0">
-                @(Model.IsProvider ? "Review consultation requests and manage your schedule." : "Book a consultation and keep track of your sessions.")
+                @(Model.IsAdmin ? "Review and manage every client's appointments with trainers and health professionals."
+                    : Model.IsProvider ? "Review consultation requests and manage your schedule." : "Book a consultation and keep track of your sessions.")
             </p>
         </div>
     </div>

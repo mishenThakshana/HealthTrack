@@ -44,6 +44,13 @@
         </div>
     </div>
 
+    @if (!Model.IsOwn)
+    {
+        <div class="mb-3">
+            <partial name="_ClientHealthProfile" model="client.ClientProfile" />
+        </div>
+    }
+
     <div class="row g-3 mb-4">
         <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-speedometer2", "Weight", Model.CurrentWeight is { } w ? $"{w:0.0} kg" : "—", Model.WeightChange is { } c ? $"{c:+0.0;-0.0;0.0} kg in this period" : "No change to compare yet")' /></div>
         <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-heart-pulse", "BMI", Model.Bmi?.ToString("0.0") ?? "—", Model.Bmi is { } b ? Bmi.Category(b) : "Needs weight and height")' /></div>

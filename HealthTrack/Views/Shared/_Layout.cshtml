@@ -38,16 +38,19 @@
                 </button>
                 <div class="collapse navbar-collapse" id="mainNav">
                     <ul class="navbar-nav me-auto ms-lg-3 gap-lg-1">
-                        <li class="nav-item">
-                            <a class="nav-link @NavActive("Home", "Index")" asp-controller="Home" asp-action="Index">
-                                <i class="bi bi-house"></i> Home
-                            </a>
-                        </li>
                         @if (User.Identity?.IsAuthenticated == true)
                         {
                             <li class="nav-item">
                                 <a class="nav-link @NavActive("Dashboard")" asp-controller="Dashboard" asp-action="Index">
                                     <i class="bi bi-speedometer2"></i> Dashboard
+                                </a>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @NavActive("Home", "Index")" asp-controller="Home" asp-action="Index">
+                                    <i class="bi bi-house"></i> Home
                                 </a>
                             </li>
                         }
@@ -71,7 +74,7 @@
                                 </ul>
                             </li>
                         }
-                        @if (User.IsInRole(Roles.Trainer) || User.IsInRole(Roles.Professional) || User.IsInRole(Roles.Client))
+                        @if (User.IsInRole(Roles.Trainer) || User.IsInRole(Roles.Professional) || User.IsInRole(Roles.Client) || User.IsInRole(Roles.Admin))
                         {
                             <li class="nav-item">
                                 <a class="nav-link @NavActive("Appointments")" asp-controller="Appointments" asp-action="Index">

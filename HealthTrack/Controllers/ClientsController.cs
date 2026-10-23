@@ -21,7 +21,7 @@ public class ClientsController(ApplicationDbContext db, UserManager<ApplicationU
     public async Task<IActionResult> Details(string id)
     {
         var trainerId = userManager.GetUserId(User)!;
-        var client = await db.Users.FirstOrDefaultAsync(u => u.Id == id && u.TrainerId == trainerId);
+        var client = await db.Users.Include(u => u.ClientProfile).FirstOrDefaultAsync(u => u.Id == id && u.TrainerId == trainerId);
         if (client is null)
             return NotFound();
 

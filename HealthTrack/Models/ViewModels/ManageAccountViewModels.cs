@@ -15,6 +15,7 @@ public class ProfileFormViewModel
     [Display(Name = "Date of birth")]
     public DateOnly? DateOfBirth { get; set; }
 
+    [Required(ErrorMessage = "Please select your gender.")]
     [StringLength(20)]
     public string? Gender { get; set; }
 
@@ -47,8 +48,12 @@ public class ManageAccountViewModel
     public ProfileFormViewModel Profile { get; init; } = new();
     public ChangePasswordViewModel Password { get; init; } = new();
     public NotificationSettingsViewModel Notifications { get; init; } = new();
+    public ClientProfileFormViewModel Client { get; init; } = new();
+    public TrainerProfileFormViewModel Trainer { get; init; } = new();
+    public ProfessionalProfileFormViewModel Professional { get; init; } = new();
     public bool EmailConfirmed { get; init; }
     public bool IsClient { get; init; }
+    public string RoleKey { get; init; } = string.Empty;
     public string Role { get; init; } = string.Empty;
     public string? TrainerName { get; init; }
     public DateTime MemberSince { get; init; }

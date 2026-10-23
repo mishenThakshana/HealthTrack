@@ -74,7 +74,7 @@ public class ProgressController(
     private async Task<ApplicationUser?> FindClientAsync(string? id) =>
         IsClient
             ? await userManager.GetUserAsync(User)
-            : await ClientAccess.VisibleClients(db, User, UserId).FirstOrDefaultAsync(u => u.Id == id);
+            : await ClientAccess.VisibleClients(db, User, UserId).Include(u => u.ClientProfile).FirstOrDefaultAsync(u => u.Id == id);
 
     private async Task<ProgressViewModel> BuildAsync(ApplicationUser client, int days, FeedbackFormViewModel form)
     {

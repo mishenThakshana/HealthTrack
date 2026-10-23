@@ -27,6 +27,7 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
         var user = await userManager.GetUserAsync(User);
         if (user is null)
             return Challenge();
+        await db.Entry(user).Reference(u => u.ClientProfile).LoadAsync();
 
         var today = Dates.Today;
         var weekStart = Dates.StartOfWeek;
@@ -43,7 +44,7 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
 
         return View(new ClientDashboardViewModel
         {
-            Profile = ToProfile(user),
+            Profile = ToProfile(user, canAddDetails: false),
             TrainerName = await db.Users.Where(u => u.Id == user.TrainerId).Select(u => u.FullName).FirstOrDefaultAsync(),
             LatestMeasurement = latest,
             Bmi = latest is null ? null : new HealthMeasurement { WeightKg = latest.WeightKg, HeightCm = height }.Bmi,
@@ -75,6 +76,7 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
         var user = await userManager.GetUserAsync(User);
         if (user is null)
             return Challenge();
+        await db.Entry(user).Reference(u => u.TrainerProfile).Query().Include(p => p.Qualifications).LoadAsync();
 
         var clients = await ClientsController.GetClientSummariesAsync(db, user.Id);
         var clientIds = clients.Select(c => c.Id).ToList();
@@ -106,6 +108,7 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
         var user = await userManager.GetUserAsync(User);
         if (user is null)
             return Challenge();
+        await db.Entry(user).Reference(u => u.ProfessionalProfile).LoadAsync();
 
         var now = DateTime.Now;
         var tomorrow = DateTime.Today.AddDays(1);
@@ -207,12 +210,19 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
         });
     }
 
-    private static MemberDashboardViewModel ToProfile(ApplicationUser user) => new()
+    private static MemberDashboardViewModel ToProfile(ApplicationUser user, bool canAddDetails = true)
     {
-        FullName = user.FullName,
-        Email = user.Email ?? string.Empty,
-        Age = Dates.Age(user.DateOfBirth),
-        Gender = user.Gender,
-        MemberSince = user.CreatedAt
-    };
+        var details = ProfileOptions.Details(user);
+
+        return new MemberDashboardViewModel
+        {
+            FullName = user.FullName,
+            Email = user.Email ?? string.Empty,
+            Age = Dates.Age(user.DateOfBirth),
+            Gender = user.Gender,
+            MemberSince = user.CreatedAt,
+            Details = details,
+            DetailsMissing = canAddDetails && details.Count == 0
+        };
+    }
 }

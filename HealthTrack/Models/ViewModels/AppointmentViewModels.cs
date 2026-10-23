@@ -48,6 +48,7 @@ public class AppointmentEditViewModel : AppointmentSlotViewModel
 public class AppointmentsPageViewModel
 {
     public bool IsProvider { get; init; }
+    public bool IsAdmin { get; init; }
     public AppointmentRequestViewModel Form { get; init; } = new();
     public IEnumerable<SelectListItem> Trainers { get; init; } = [];
     public IReadOnlyList<Appointment> Requests { get; init; } = [];
@@ -59,6 +60,7 @@ public class AppointmentDetailsViewModel
 {
     public required Appointment Appointment { get; init; }
     public bool IsProvider { get; init; }
+    public bool IsAdmin { get; init; }
 }
 
 public class AppointmentEditPageViewModel

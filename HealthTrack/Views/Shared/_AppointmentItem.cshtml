@@ -3,7 +3,8 @@
 @{
     var isProvider = (bool)ViewData["IsProvider"]!;
     var returnUrl = Context.Request.Path + Context.Request.QueryString;
-    var other = isProvider ? Model.Client?.FullName : Model.Trainer?.FullName;
+    var other = ViewData["IsAdmin"] is true ? $"{Model.Client?.FullName} with {Model.Trainer?.FullName}"
+        : isProvider ? Model.Client?.FullName : Model.Trainer?.FullName;
 }
 
 <li class="flex-wrap">

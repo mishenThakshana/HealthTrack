@@ -146,6 +146,9 @@ namespace HealthTrack.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("CancelledByAdmin")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("CancelledByClient")
                         .HasColumnType("bit");
 
@@ -199,6 +202,43 @@ namespace HealthTrack.Migrations
                     b.HasIndex("TrainerId", "StartsAt");
 
                     b.ToTable("Appointments");
+                });
+
+            modelBuilder.Entity("HealthTrack.Models.ClientProfile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ActivityLevel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("FitnessGoal")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("HealthConditions")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("ClientProfiles");
                 });
 
             modelBuilder.Entity("HealthTrack.Models.DietMeal", b =>
@@ -415,6 +455,46 @@ namespace HealthTrack.Migrations
                     b.ToTable("Notifications");
                 });
 
+            modelBuilder.Entity("HealthTrack.Models.ProfessionalProfile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Profession")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("RegistrationNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Workplace")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("YearsOfExperience")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("ProfessionalProfiles");
+                });
+
             modelBuilder.Entity("HealthTrack.Models.ProgressFeedback", b =>
                 {
                     b.Property<int>("Id")
@@ -446,6 +526,60 @@ namespace HealthTrack.Migrations
                     b.HasIndex("ClientId", "CreatedAt");
 
                     b.ToTable("ProgressFeedback");
+                });
+
+            modelBuilder.Entity("HealthTrack.Models.TrainerProfile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Specialization")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("YearsOfExperience")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("TrainerProfiles");
+                });
+
+            modelBuilder.Entity("HealthTrack.Models.TrainerQualification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("TrainerProfileId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TrainerProfileId");
+
+                    b.ToTable("TrainerQualifications");
                 });
 
             modelBuilder.Entity("HealthTrack.Models.WorkoutExercise", b =>
@@ -736,6 +870,17 @@ namespace HealthTrack.Migrations
                     b.Navigation("Trainer");
                 });
 
+            modelBuilder.Entity("HealthTrack.Models.ClientProfile", b =>
+                {
+                    b.HasOne("HealthTrack.Models.ApplicationUser", "User")
+                        .WithOne("ClientProfile")
+                        .HasForeignKey("HealthTrack.Models.ClientProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("HealthTrack.Models.DietMeal", b =>
                 {
                     b.HasOne("HealthTrack.Models.DietPlan", "DietPlan")
@@ -799,6 +944,17 @@ namespace HealthTrack.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("HealthTrack.Models.ProfessionalProfile", b =>
+                {
+                    b.HasOne("HealthTrack.Models.ApplicationUser", "User")
+                        .WithOne("ProfessionalProfile")
+                        .HasForeignKey("HealthTrack.Models.ProfessionalProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("HealthTrack.Models.ProgressFeedback", b =>
                 {
                     b.HasOne("HealthTrack.Models.ApplicationUser", "Author")
@@ -816,6 +972,28 @@ namespace HealthTrack.Migrations
                     b.Navigation("Author");
 
                     b.Navigation("Client");
+                });
+
+            modelBuilder.Entity("HealthTrack.Models.TrainerProfile", b =>
+                {
+                    b.HasOne("HealthTrack.Models.ApplicationUser", "User")
+                        .WithOne("TrainerProfile")
+                        .HasForeignKey("HealthTrack.Models.TrainerProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("HealthTrack.Models.TrainerQualification", b =>
+                {
+                    b.HasOne("HealthTrack.Models.TrainerProfile", "TrainerProfile")
+                        .WithMany("Qualifications")
+                        .HasForeignKey("TrainerProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TrainerProfile");
                 });
 
             modelBuilder.Entity("HealthTrack.Models.WorkoutExercise", b =>
@@ -910,9 +1088,23 @@ namespace HealthTrack.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("HealthTrack.Models.ApplicationUser", b =>
+                {
+                    b.Navigation("ClientProfile");
+
+                    b.Navigation("ProfessionalProfile");
+
+                    b.Navigation("TrainerProfile");
+                });
+
             modelBuilder.Entity("HealthTrack.Models.DietPlan", b =>
                 {
                     b.Navigation("Meals");
+                });
+
+            modelBuilder.Entity("HealthTrack.Models.TrainerProfile", b =>
+                {
+                    b.Navigation("Qualifications");
                 });
 
             modelBuilder.Entity("HealthTrack.Models.WorkoutPlan", b =>

@@ -10,11 +10,26 @@
         <dd>@Model.FullName</dd>
         <dt>Email</dt>
         <dd class="text-break">@Model.Email</dd>
-        <dt>Age</dt>
-        <dd>@(Model.Age?.ToString() ?? "Not set")</dd>
+        @if (Model.Age is not null)
+        {
+            <dt>Age</dt>
+            <dd>@Model.Age</dd>
+        }
         <dt>Gender</dt>
         <dd>@(Model.Gender ?? "Not set")</dd>
+        @foreach (var (label, value) in Model.Details)
+        {
+            <dt>@label</dt>
+            <dd class="text-break">@value</dd>
+        }
         <dt>Member since</dt>
         <dd>@Model.MemberSince.ToLocalTime().ToString("d MMM yyyy")</dd>
     </dl>
+    @if (Model.DetailsMissing)
+    {
+        <div class="ht-note small mt-3">
+            <i class="bi bi-info-circle text-primary"></i>
+            Your profile is missing some details. <a asp-controller="Account" asp-action="Manage" asp-fragment="details">Add them now</a>.
+        </div>
+    }
 </div>

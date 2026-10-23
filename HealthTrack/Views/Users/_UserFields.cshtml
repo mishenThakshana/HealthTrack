@@ -36,10 +36,10 @@
         <input asp-for="DateOfBirth" type="date" class="form-control" />
         <span asp-validation-for="DateOfBirth" class="text-danger small"></span>
     </div>
-    <div class="col-sm-6">
+    <div class="col-sm-6" data-hide-for-role="@Roles.Admin" hidden="@(Model.Role == Roles.Admin ? "hidden" : null)">
         <label asp-for="Gender" class="form-label"></label>
         <select asp-for="Gender" asp-items="@(new SelectList(AccountController.Genders))" class="form-select">
-            <option value="">Not set</option>
+            <option value="">Select</option>
         </select>
         <span asp-validation-for="Gender" class="text-danger small"></span>
     </div>

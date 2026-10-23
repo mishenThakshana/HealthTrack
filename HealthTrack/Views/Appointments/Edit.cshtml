@@ -1,4 +1,5 @@
 @model AppointmentEditPageViewModel
+@using HealthTrack.Data
 @{
     var a = Model.Appointment;
     ViewData["Title"] = "Edit appointment";
@@ -18,7 +19,7 @@
             <div class="ht-icon"><i class="bi bi-calendar-event"></i></div>
             <div>
                 <h1 class="h4 mb-0">Edit appointment</h1>
-                <div class="text-muted small">with @a.Client!.FullName</div>
+                <div class="text-muted small">@(User.IsInRole(Roles.Admin) ? $"{a.Client!.FullName} with {a.Trainer!.FullName}" : $"with {a.Client!.FullName}")</div>
             </div>
         </div>
 

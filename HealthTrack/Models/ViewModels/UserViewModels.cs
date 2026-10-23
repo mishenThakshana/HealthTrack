@@ -30,6 +30,7 @@ public class UserFormViewModel
     [Display(Name = "Date of birth")]
     public DateOnly? DateOfBirth { get; set; }
 
+    [Required(ErrorMessage = "Please select your gender.")]
     [StringLength(20)]
     public string? Gender { get; set; }
 
@@ -67,4 +68,5 @@ public class UserEditPageViewModel
     public DateTime? LastLoginAt { get; init; }
     public DateTimeOffset? LockoutEnd { get; init; }
     public string? TrainerName { get; init; }
+    public IReadOnlyList<(string Label, string Value)> RoleDetails { get; init; } = [];
 }

@@ -1,7 +1,10 @@
 @using HealthTrack.Controllers
+@using HealthTrack.Data
+@using HealthTrack.Helpers
 @model HealthTrack.Models.ViewModels.RegisterViewModel
 @{
     ViewData["Title"] = "Create account";
+    string? HiddenUnless(string role) => Model.Role == role ? null : "hidden";
 }
 
 <div class="container py-5">
@@ -53,14 +56,7 @@
             </div>
 
             <div class="row g-3 mb-3">
-                <div class="col-sm-6">
-                    <div class="form-floating">
-                        <input asp-for="DateOfBirth" type="date" class="form-control" placeholder="Date of birth" />
-                        <label asp-for="DateOfBirth"></label>
-                        <span asp-validation-for="DateOfBirth" class="text-danger small"></span>
-                    </div>
-                </div>
-                <div class="col-sm-6">
+                <div class="col-sm">
                     <div class="form-floating">
                         <select asp-for="Gender" asp-items="@(new SelectList(AccountController.Genders))" class="form-select">
                             <option value="">Select</option>
@@ -69,7 +65,81 @@
                         <span asp-validation-for="Gender" class="text-danger small"></span>
                     </div>
                 </div>
+                <div class="col-sm" data-show-for-role="@Roles.Client" hidden="@HiddenUnless(Roles.Client)">
+                    <div class="form-floating">
+                        <input asp-for="DateOfBirth" type="date" class="form-control" placeholder="Date of birth" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                        <label asp-for="DateOfBirth"></label>
+                        <span asp-validation-for="DateOfBirth" class="text-danger small"></span>
+                    </div>
+                </div>
             </div>
+
+            <fieldset class="ht-role-section mb-3" data-show-for-role="@Roles.Trainer" hidden="@HiddenUnless(Roles.Trainer)">
+                <legend class="form-label fw-semibold fs-6 mb-1"><i class="bi bi-person-badge text-primary"></i> About your coaching</legend>
+                <p class="form-text mt-0 mb-2">Clients see your specialization and experience when they book an appointment.</p>
+                <div class="row g-2 mb-3">
+                    <div class="col-sm-7">
+                        <div class="form-floating">
+                            <select asp-for="Trainer.Specialization" asp-items="@(new SelectList(ProfileOptions.Specializations))" class="form-select">
+                                <option value="">Select</option>
+                            </select>
+                            <label asp-for="Trainer.Specialization"></label>
+                        </div>
+                        <span asp-validation-for="Trainer.Specialization" class="text-danger small"></span>
+                    </div>
+                    <div class="col-sm-5">
+                        <div class="input-group">
+                            <div class="form-floating">
+                                <input asp-for="Trainer.YearsOfExperience" type="number" min="0" max="60" class="form-control" placeholder="0" />
+                                <label asp-for="Trainer.YearsOfExperience"></label>
+                            </div>
+                            <span class="input-group-text">years</span>
+                        </div>
+                        <span asp-validation-for="Trainer.YearsOfExperience" class="text-danger small"></span>
+                    </div>
+                </div>
+                <partial name="_QualificationsField" for="Trainer" />
+            </fieldset>
+
+            <fieldset class="ht-role-section mb-3" data-show-for-role="@Roles.Professional" hidden="@HiddenUnless(Roles.Professional)">
+                <legend class="form-label fw-semibold fs-6 mb-1"><i class="bi bi-hospital text-primary"></i> About your practice</legend>
+                <p class="form-text mt-0 mb-2">Clients see your profession and workplace when they book a consultation.</p>
+                <div class="row g-2">
+                    <div class="col-sm-7">
+                        <div class="form-floating">
+                            <select asp-for="Professional.Profession" asp-items="@(new SelectList(ProfileOptions.Professions))" class="form-select">
+                                <option value="">Select</option>
+                            </select>
+                            <label asp-for="Professional.Profession"></label>
+                        </div>
+                        <span asp-validation-for="Professional.Profession" class="text-danger small"></span>
+                    </div>
+                    <div class="col-sm-5">
+                        <div class="input-group">
+                            <div class="form-floating">
+                                <input asp-for="Professional.YearsOfExperience" type="number" min="0" max="60" class="form-control" placeholder="0" />
+                                <label asp-for="Professional.YearsOfExperience"></label>
+                            </div>
+                            <span class="input-group-text">years</span>
+                        </div>
+                        <span asp-validation-for="Professional.YearsOfExperience" class="text-danger small"></span>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="form-floating">
+                            <input asp-for="Professional.RegistrationNumber" class="form-control" maxlength="50" placeholder="Registration number" />
+                            <label asp-for="Professional.RegistrationNumber"></label>
+                        </div>
+                        <span asp-validation-for="Professional.RegistrationNumber" class="text-danger small"></span>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="form-floating">
+                            <input asp-for="Professional.Workplace" class="form-control" maxlength="100" placeholder="Workplace" />
+                            <label asp-for="Professional.Workplace"></label>
+                        </div>
+                        <span asp-validation-for="Professional.Workplace" class="text-danger small"></span>
+                    </div>
+                </div>
+            </fieldset>
 
             <div class="row g-3 mb-1">
                 <div class="col-sm-6">

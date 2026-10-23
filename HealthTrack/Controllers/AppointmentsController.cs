@@ -12,11 +12,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HealthTrack.Controllers;
 
-[Authorize(Roles = Roles.Client + "," + Roles.Providers)]
+[Authorize(Roles = Roles.Client + "," + Roles.AppointmentManagers)]
 public class AppointmentsController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, NotificationService notifications) : Controller
 {
     private string UserId => userManager.GetUserId(User)!;
-    private bool IsProvider => User.IsInRole(Roles.Trainer) || User.IsInRole(Roles.Professional);
+    private bool IsAdmin => User.IsInRole(Roles.Admin);
+
+    // Trainers and professionals manage their own appointments; admins manage everyone's.
+    private bool IsProvider => User.IsInRole(Roles.Trainer) || User.IsInRole(Roles.Professional) || IsAdmin;
 
     public async Task<IActionResult> Index()
     {
@@ -33,7 +36,7 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         if (appointment is null)
             return NotFound();
 
-        return View(new AppointmentDetailsViewModel { Appointment = appointment, IsProvider = IsProvider });
+        return View(new AppointmentDetailsViewModel { Appointment = appointment, IsProvider = IsProvider, IsAdmin = IsAdmin });
     }
 
     [HttpPost, Authorize(Roles = Roles.Client), ValidateAntiForgeryToken]
@@ -76,29 +79,30 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         return RedirectToAction(nameof(Index));
     }
 
-    [HttpPost, Authorize(Roles = Roles.Providers), ValidateAntiForgeryToken]
+    [HttpPost, Authorize(Roles = Roles.AppointmentManagers), ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(int id, string? returnUrl)
     {
         var appointment = await FindOwnAsync(id);
         if (appointment is null || !AppointmentRules.CanRespond(appointment))
             return NotFound();
 
-        if (await TrainerBusyAsync(UserId, appointment.StartsAt, appointment.EndsAt, id))
+        if (await TrainerBusyAsync(appointment.TrainerId, appointment.StartsAt, appointment.EndsAt, id))
         {
-            TempData["Error"] = "You already have an appointment at that time. Reschedule this request or decline it.";
+            TempData["Error"] = $"{(IsAdmin ? appointment.Trainer!.FullName + " already has" : "You already have")} an appointment at that time. Reschedule this request or decline it.";
             return RedirectToAction(nameof(Details), new { id });
         }
 
         SetStatus(appointment, AppointmentStatus.Approved);
         await db.SaveChangesAsync();
-        await notifications.NotifyAsync(appointment.ClientId, NotificationType.AppointmentApproved, "Appointment approved",
-            $"{await MyNameAsync()} approved your appointment on {When(appointment)}.", DetailsLink(appointment));
+        var me = await MyNameAsync();
+        await NotifyClientAsync(appointment, NotificationType.AppointmentApproved, "Appointment approved",
+            whose => $"{me} approved {whose} appointment on {When(appointment)}.");
 
         TempData["Success"] = $"Approved {appointment.Client!.FullName}'s appointment on {appointment.StartsAt:ddd d MMM 'at' HH:mm}.";
         return BackTo(returnUrl, id);
     }
 
-    [HttpPost, Authorize(Roles = Roles.Providers), ValidateAntiForgeryToken]
+    [HttpPost, Authorize(Roles = Roles.AppointmentManagers), ValidateAntiForgeryToken]
     public async Task<IActionResult> Decline(int id, string? note, string? returnUrl)
     {
         var appointment = await FindOwnAsync(id);
@@ -108,9 +112,9 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         SetStatus(appointment, AppointmentStatus.Declined);
         appointment.TrainerNote = TrackingRules.Clean(note) ?? appointment.TrainerNote;
         await db.SaveChangesAsync();
-        await notifications.NotifyAsync(appointment.ClientId, NotificationType.AppointmentDeclined, "Appointment declined",
-            $"{await MyNameAsync()} declined your request for {When(appointment)}." + (TrackingRules.Clean(note) is { } reason ? $" Reason: {reason}" : ""),
-            DetailsLink(appointment));
+        var me = await MyNameAsync();
+        await NotifyClientAsync(appointment, NotificationType.AppointmentDeclined, "Appointment declined",
+            whose => $"{me} declined {whose} request for {When(appointment)}." + (TrackingRules.Clean(note) is { } reason ? $" Reason: {reason}" : ""));
 
         TempData["Success"] = $"Declined {appointment.Client!.FullName}'s request.";
         return BackTo(returnUrl, id);
@@ -125,20 +129,22 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
 
         SetStatus(appointment, AppointmentStatus.Cancelled);
         appointment.CancelledByClient = !IsProvider;
+        appointment.CancelledByAdmin = IsAdmin;
         if (IsProvider)
             appointment.TrainerNote = TrackingRules.Clean(note) ?? appointment.TrainerNote;
         await db.SaveChangesAsync();
-        await notifications.NotifyAsync(IsProvider ? appointment.ClientId : appointment.TrainerId, NotificationType.AppointmentCancelled,
-            "Appointment cancelled",
-            $"{await MyNameAsync()} cancelled the appointment on {When(appointment)}."
-                + (IsProvider && TrackingRules.Clean(note) is { } reason ? $" Reason: {reason}" : ""),
-            DetailsLink(appointment));
+
+        var message = $"{await MyNameAsync()} cancelled the appointment on {When(appointment)}."
+            + (IsProvider && TrackingRules.Clean(note) is { } reason ? $" Reason: {reason}" : "");
+        string[] recipients = IsAdmin ? [appointment.ClientId, appointment.TrainerId] : [IsProvider ? appointment.ClientId : appointment.TrainerId];
+        foreach (var recipient in recipients)
+            await notifications.NotifyAsync(recipient, NotificationType.AppointmentCancelled, "Appointment cancelled", message, DetailsLink(appointment));
 
         TempData["Success"] = "Appointment cancelled.";
         return RedirectToAction(nameof(Details), new { id });
     }
 
-    [HttpPost, Authorize(Roles = Roles.Providers), ValidateAntiForgeryToken]
+    [HttpPost, Authorize(Roles = Roles.AppointmentManagers), ValidateAntiForgeryToken]
     public async Task<IActionResult> Complete(int id, string? returnUrl)
     {
         var appointment = await FindOwnAsync(id);
@@ -147,14 +153,15 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
 
         SetStatus(appointment, AppointmentStatus.Completed);
         await db.SaveChangesAsync();
-        await notifications.NotifyAsync(appointment.ClientId, NotificationType.AppointmentCompleted, "Appointment completed",
-            $"{await MyNameAsync()} marked your appointment on {When(appointment)} as completed.", DetailsLink(appointment));
+        var me = await MyNameAsync();
+        await NotifyClientAsync(appointment, NotificationType.AppointmentCompleted, "Appointment completed",
+            whose => $"{me} marked {whose} appointment on {When(appointment)} as completed.");
 
         TempData["Success"] = "Marked as completed.";
         return BackTo(returnUrl, id);
     }
 
-    [Authorize(Roles = Roles.Providers)]
+    [Authorize(Roles = Roles.AppointmentManagers)]
     public async Task<IActionResult> Edit(int id)
     {
         var appointment = await FindOwnAsync(id);
@@ -176,7 +183,7 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         });
     }
 
-    [HttpPost, Authorize(Roles = Roles.Providers), ValidateAntiForgeryToken]
+    [HttpPost, Authorize(Roles = Roles.AppointmentManagers), ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(int id, [Bind(Prefix = "Form")] AppointmentEditViewModel form)
     {
         var appointment = await FindOwnAsync(id);
@@ -186,8 +193,8 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         ValidateSlot(ModelState, "Form", form);
         if (ModelState.IsValid)
         {
-            if (await TrainerBusyAsync(UserId, form.StartsAt, form.EndsAt, id))
-                ModelState.AddModelError("Form.Time", "You already have an appointment at that time.");
+            if (await TrainerBusyAsync(appointment.TrainerId, form.StartsAt, form.EndsAt, id))
+                ModelState.AddModelError("Form.Time", $"{(IsAdmin ? appointment.Trainer!.FullName + " already has" : "You already have")} an appointment at that time.");
             else if (await ClientBusyAsync(appointment.ClientId, form.StartsAt, form.EndsAt, id))
                 ModelState.AddModelError("Form.Time", $"{appointment.Client!.FullName} already has an appointment at that time.");
         }
@@ -202,10 +209,10 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         appointment.TrainerNote = TrackingRules.Clean(form.TrainerNote);
         SetStatus(appointment, AppointmentStatus.Approved);
         await db.SaveChangesAsync();
-        await notifications.NotifyAsync(appointment.ClientId, NotificationType.AppointmentRescheduled, "Appointment updated",
-            $"{await MyNameAsync()} confirmed your appointment for {When(appointment)} ({appointment.Mode.Label().ToLowerInvariant()})."
-                + (appointment.Location is { } location ? $" Location: {location}" : ""),
-            DetailsLink(appointment));
+        var me = await MyNameAsync();
+        await NotifyClientAsync(appointment, NotificationType.AppointmentRescheduled, "Appointment updated",
+            whose => $"{me} confirmed {whose} appointment for {When(appointment)} ({appointment.Mode.Label().ToLowerInvariant()})."
+                + (appointment.Location is { } location ? $" Location: {location}" : ""));
 
         TempData["Success"] = "Appointment updated and confirmed.";
         return RedirectToAction(nameof(Details), new { id });
@@ -247,7 +254,17 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         appointment.UpdatedAt = DateTime.UtcNow;
     }
 
-    private Task<string> MyNameAsync() => db.Users.Where(u => u.Id == UserId).Select(u => u.FullName).FirstAsync();
+    private async Task<string> MyNameAsync() =>
+        IsAdmin ? "An administrator" : await db.Users.Where(u => u.Id == UserId).Select(u => u.FullName).FirstAsync();
+
+    // Tells the client what changed; when an admin made the change, the trainer or professional is told too.
+    // message is given "your" for the client and the client's name for the provider.
+    private async Task NotifyClientAsync(Appointment a, NotificationType type, string title, Func<string, string> message)
+    {
+        await notifications.NotifyAsync(a.ClientId, type, title, message("your"), DetailsLink(a));
+        if (IsAdmin)
+            await notifications.NotifyAsync(a.TrainerId, type, title, message(a.Client!.FullName + "'s"), DetailsLink(a));
+    }
 
     private static string When(Appointment a) => $"{a.StartsAt:ddd d MMM 'at' HH:mm}";
 
@@ -261,11 +278,13 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         var trainers = new SelectListGroup { Name = "Trainers" };
         var professionals = new SelectListGroup { Name = "Health professionals" };
         var options = await db.UsersInRole(Roles.Trainer).OrderBy(u => u.FullName)
-            .Select(u => new SelectListItem(u.FullName, u.Id, u.Id == selected)).ToListAsync();
+            .Select(u => new SelectListItem(u.TrainerProfile != null ? u.FullName + " — " + u.TrainerProfile.Specialization : u.FullName,
+                u.Id, u.Id == selected)).ToListAsync();
         options.ForEach(o => o.Group = trainers);
 
         var others = await db.UsersInRole(Roles.Professional).OrderBy(u => u.FullName)
-            .Select(u => new SelectListItem(u.FullName, u.Id, u.Id == selected)).ToListAsync();
+            .Select(u => new SelectListItem(u.ProfessionalProfile != null ? u.FullName + " — " + u.ProfessionalProfile.Profession : u.FullName,
+                u.Id, u.Id == selected)).ToListAsync();
         others.ForEach(o => o.Group = professionals);
 
         return [.. options, .. others];
@@ -275,12 +294,17 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Details), new { id });
 
     private IQueryable<Appointment> Mine() =>
-        IsProvider ? db.Appointments.Where(a => a.TrainerId == UserId) : db.Appointments.Where(a => a.ClientId == UserId);
+        IsAdmin ? db.Appointments
+        : IsProvider ? db.Appointments.Where(a => a.TrainerId == UserId) : db.Appointments.Where(a => a.ClientId == UserId);
 
-    private Task<Appointment?> FindOwnAsync(int id) => Mine().Include(a => a.Client).FirstOrDefaultAsync(a => a.Id == id);
+    private Task<Appointment?> FindOwnAsync(int id) =>
+        Mine().Include(a => a.Client).Include(a => a.Trainer).FirstOrDefaultAsync(a => a.Id == id);
 
     private Task<Appointment?> LoadAsync(int id) =>
-        Mine().Include(a => a.Client).Include(a => a.Trainer).FirstOrDefaultAsync(a => a.Id == id);
+        Mine().Include(a => a.Client)
+            .Include(a => a.Trainer).ThenInclude(t => t!.TrainerProfile)
+            .Include(a => a.Trainer).ThenInclude(t => t!.ProfessionalProfile)
+            .FirstOrDefaultAsync(a => a.Id == id);
 
     private async Task<AppointmentsPageViewModel> BuildPageAsync(AppointmentRequestViewModel form)
     {
@@ -290,6 +314,7 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         return new AppointmentsPageViewModel
         {
             IsProvider = IsProvider,
+            IsAdmin = IsAdmin,
             Form = form,
             Trainers = IsProvider ? [] : await ProviderOptionsAsync(form.TrainerId),
             Requests = await mine.Where(a => a.Status == AppointmentStatus.Pending && a.StartsAt > now)

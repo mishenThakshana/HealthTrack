@@ -2,6 +2,304 @@
 
 A log of every task completed on HealthTrack, newest first.
 
+## 2026-10-23 — Remove "About your health" from clients' My account page
+
+Commit: not committed yet
+
+### Changed
+- **`Views/Account/Manage.cshtml`:** the "About your health" panel (main goal, activity level, health conditions, and the link to Measurements) no longer shows for clients. The details panel now only appears for trainers ("About your coaching") and professionals ("About your practice").
+- **`DashboardController.ToProfile`:** new `canAddDetails` parameter (default `true`). The client dashboard passes `false`, so clients no longer see the "Your profile is missing some details. Add them now" note, which linked to the removed panel. Trainers and professionals still see it.
+- Not changed: `AccountController.UpdateDetails` still accepts clients, and the stored client profile (goal, activity, health conditions) is kept and still shows on the client dashboard profile card when set.
+
+### Verification
+- `dotnet build`: 0 errors.
+
+## 2026-10-22 — Keep only Coach Reddy and Mishen Thakshana; admins manage appointments
+
+Commit: not committed yet
+
+### Removed (database and seed data)
+- **Demo accounts deleted** from the local SQL Server database (`HealthTrack` in the `sql` container), along with all their data:
+  - `trainer@healthtrack.local` (Alex Morgan), `client@healthtrack.local` (Jamie Silva), `doctor@healthtrack.local` (Dr. Sam Patel).
+  - The script ran in one transaction. It first cleared `AspNetUsers.TrainerId` where it pointed at a deleted user, then deleted their `Notifications`, `Appointments`, `ProgressFeedback`, `HealthMeasurements`, `MealLogs`, `WorkoutLogs`, `DietPlans` and `WorkoutPlans` (exercises and meals cascade), then deleted the users. Role links, profiles and qualifications were removed by cascade.
+  - Accounts left: `admin@healthtrack.local`, `coachreddy@gmail.com` (Coach Reddy, Trainer, with trainer profile and 2 qualifications), and `mishenthak@gmail.com` (Mishen Thakshana, Client). Their data was left alone: 1 approved appointment and 4 notifications.
+  - Ran with `sqlcmd -I`. Without it, `QUOTED_IDENTIFIER` is off, so the update on `AspNetUsers` fails because of the filtered indexes.
+- **`appsettings.Development.json`:** `SeedUsers` now holds only the admin, so the seeder doesn't recreate the demo accounts on the next start.
+- **Docs:** the README "Seeded accounts" section lists only the admin and explains how to add more seed users. `TESTING-WALKTHROUGH.md` §2.3 has a note that the demo trainer, client and professional need to be registered first.
+
+### Added — admins manage appointments
+- `Roles.AppointmentManagers` (`Trainer,Professional,Admin`). `AppointmentsController` now allows admins at class level, and Approve, Decline, Complete and Edit (GET and POST) accept them too. Create (booking) stays client-only.
+- **Controller (`AppointmentsController`):**
+  - `IsAdmin`. `IsProvider` is also true for admins, so they get the manager UI and rules (for example, they can't cancel a pending request; they decline it instead).
+  - `Mine()` returns every appointment for an admin. `FindOwnAsync` now also loads `Trainer`.
+  - Clash checks in Approve and Edit use the appointment's `TrainerId` instead of the signed-in user's, with the message "<trainer> already has an appointment at that time" for admins.
+  - Notifications: `MyNameAsync()` returns "An administrator" for admins. The new `NotifyClientAsync(appointment, type, title, whose => …)` tells the client ("your appointment"). When an admin acted, it also tells the trainer or professional ("Mishen Thakshana's appointment"). An admin cancel notifies both sides.
+- **`Appointment.CancelledByAdmin`** (bit, default 0). Migration `20261022164202_AdminCancelledAppointments`. Details shows "Cancelled by: An administrator".
+- **View models:** `AppointmentsPageViewModel.IsAdmin`, `AppointmentDetailsViewModel.IsAdmin`.
+- **Views:**
+  - `_Layout`: the Appointments nav link now shows for admins.
+  - `Appointments/Index`: admin subtitle "Review and manage every client's appointments with trainers and health professionals."; no booking form.
+  - `_AppointmentItem`: list rows show "Client with Trainer" for admins.
+  - `Appointments/Details`: title "Client with Trainer", a "With" row (provider name, headline, email), and the client name links to Users/Edit. A note is labelled with the trainer's name instead of "you".
+  - `Appointments/Edit`: subtitle "Client with Trainer" for admins.
+
+### Verification (port 5299, Development; build 0 errors, 0 warnings)
+- On startup the migration applied, and only the 3 accounts exist (nothing was re-seeded).
+- Used a temporary pending appointment between Mishen and Coach Reddy, signed in as admin (curl):
+  - The Appointments nav link shows. Index shows the admin subtitle and "… with Coach Reddy" rows. Details shows Approve / Decline / Change time & approve.
+  - Edit to 4 Nov 14:00, 45 min, video, location `Zoom {link}` → 302. Approved. The client and the trainer got "An administrator confirmed your / Mishen Thakshana's appointment…" (checked in Mailpit; braces in user text are fine).
+  - Cancel with a reason → status Cancelled, `CancelledByAdmin = 1`, Details "An administrator on 22 Oct 2026", both notified.
+  - Reset to pending → Approve → Approved, both notified.
+- Cleanup: deleted the test appointment and its 6 notifications and reseeded the `Appointments` identity. Stopped only the port-5299 process.
+
+### Notes
+- Restart your app (`dotnet run` / `dotnet watch`) so it applies the migration and picks up the new code.
+- Admins can't book appointments on a client's behalf. Booking is still done by clients.
+
+## 2026-10-22 — Hide the Home link for signed-in users
+
+Commit: not committed yet
+
+### Changed
+- **Top bar:** the "Home" nav link (`Views/Shared/_Layout.cshtml`) now shows only to signed-out visitors. Signed-in users see Dashboard as the first link instead. The HealthTrack brand logo still links to the home page.
+
+## 2026-10-21 — Registration layout: no client health step, compact provider sections, multiple qualifications
+
+Commit: not committed yet
+
+### Changed
+- **Clients aren't asked health questions at registration.**
+  - The "About your health" section is removed, along with height and weight.
+  - `RegisterViewModel` no longer has `HeightCm`, `WeightKg` or `Client`, and registration no longer creates a first measurement.
+  - New clients see the dashboard's "Your profile is missing some details. Add them now" prompt and add their goal, activity and health notes under My account (`UpdateDetails`, unchanged).
+  - Date of birth stays, beside Gender.
+- **Gender / date-of-birth row** uses `col-sm` columns, so for trainers and professionals (no date of birth) Gender takes the full row instead of half.
+- **Trainer section:**
+  - Specialization (`col-sm-7`) and Experience (`col-sm-5`, a floating input inside an input group with a "years" suffix) share one line.
+  - Qualifications is now a list: one input per qualification, "+ Add another qualification", and × to remove (hidden while only one row is left), up to 10.
+  - In the registration sections the inputs match the floating-field height; the remove buttons use the normal border colour.
+- **Professional section:**
+  - Profession and Experience (with "years") on one line; Registration / licence no. and Workplace (optional) on the next.
+  - Shorter labels ("Registration / licence no.", "Workplace (optional)", "Experience") and messages ("Enter your registration number.", "Enter your experience.", "Enter 0 to 60 years.", "Use 3 to 50 characters."), so nothing is cramped or wraps.
+  - Validation messages sit under each field instead of inside the floating wrapper.
+- **My account:** the trainer and professional panels use the same 7/5 split with the "years" suffix, and trainers get the same qualification list.
+
+### Added
+- **`TrainerQualifications` table** (`Models/TrainerQualification.cs`): one-to-many from `TrainerProfiles`, cascade delete, `Name` ≤ 100.
+  - `TrainerProfile.Certifications` is replaced by `Qualifications`.
+  - Migration `TrainerQualifications`:
+    - Creates the table, then copies each comma-separated part of the old `Certifications` text into its own row (`STRING_SPLIT` with ordinal) before dropping the column. The seeded trainer kept "Level 3 Personal Trainer" and "First Aid at Work".
+    - `Down` joins the rows back into the column with `STRING_AGG`.
+- **Qualifications form and rules:**
+  - `TrainerProfileFormViewModel.Qualifications` (`List<string?>`).
+  - `RoleProfiles.Validate`: at least 1, at most `MaxQualifications` (10), each 2–100 characters.
+  - `CleanQualifications`: drops blanks and case-insensitive duplicates.
+  - `ApplyAsync` replaces the list.
+- **Qualification list UI:**
+  - `Views/Shared/_QualificationsField.cshtml`, rendered with `<partial for="Trainer">` on registration and My account. The first input carries the browser-side "Add at least one qualification." rule.
+  - `site.js` `data-repeat-list`:
+    - Add clones the first row without its validation attributes.
+    - Remove shifts the values up and drops the last row, so names stay `[0..n-1]` and the validated first input is kept.
+- **Where qualifications appear:** profile cards and the admin's Coaching details (comma-separated), the data export (a list), and the seeder (config `"Qualifications": [ ... ]`).
+
+### Verification (port 5299, Development; build 0 errors)
+- **Migration:** applied; 2 qualification rows for the seed trainer; `Certifications` column gone.
+- **Screenshots (headless Chrome) at 1280 px and 390 px:**
+  - Client form shows only name, email, gender + date of birth, password.
+  - Trainer section: one-line specialization/experience; qualification rows the same height as other fields.
+  - Professional section aligned, with and without errors.
+- **Browser flows (no JS errors):**
+  - Trainer: added 3 qualifications and removed the middle one → saved "Level 3 PT, Nutrition Coach" in order.
+  - My account: removed the first, added "First Aid" → saved; removing all → "Add at least one qualification."
+  - Professional registration with an empty workplace → card without workplace.
+  - Client: registered with no health fields → missing-details prompt; added goal/activity → card updated, prompt gone.
+- **Found and fixed during testing:** client registration failed because the hidden trainer/professional sections' required rules weren't discarded for clients. `RoleProfiles.Validate` now always runs at registration.
+- **curl:**
+  - No qualifications → error. 11 → "Add up to 10". A 1-character entry → length error.
+  - "CPR", "", "cpr", "Pilates Mat" → saved as ["CPR", "Pilates Mat"] (checked in the export).
+  - Admin user page for the seed trainer shows the migrated qualifications.
+- **Cleanup:**
+  - Recorded a baseline first (4 users, sign-in times NULL, no notifications, empty Mailpit).
+  - Deleted the 4 test accounts; their qualification rows were removed by cascade.
+  - Reset sign-in times set after the test start (14:05:17 UTC), deleted the 4 test emails from Mailpit, stopped my app instance and headless Chrome, and emptied the scratchpad.
+  - The database matches the baseline, plus the seed trainer's 2 migrated qualifications.
+  - The user's `dotnet watch` on 5182 wasn't touched.
+
+## 2026-10-20 — Gender rules and role-specific registration (one-to-one profile tables)
+
+Commit: not committed yet
+
+### Gender
+- Options are now **Male / Female** only (`AccountController.Genders`); "Other" and "Prefer not to say" are rejected with "Please choose a valid option."
+- **Required for everyone except admins:**
+  - `[Required(ErrorMessage = "Please select your gender.")]` on `ProfileFormViewModel` (My account) and `UserFormViewModel` (admin Users forms), as well as on registration.
+  - "Not set" options renamed "Select".
+- **Admins have no gender:**
+  - My account hides the field for admins, and `UpdateProfile` drops the rule and stores NULL.
+  - On Users → Create/Edit the gender field is wrapped in `data-hide-for-role="Admin"`. It hides and disables while the role is Admin, and `UsersController.ValidateProfile` drops the rule and stores NULL for admin accounts.
+- **Seed data:**
+  - The admin has no gender (removed from `appsettings.Development.json`, and set to NULL in the current database).
+  - The doctor's gender changed from "Prefer not to say" to "Male", in config and in the database. This was an arbitrary choice for seed data; change it if you prefer.
+
+### Role-specific registration
+- **New tables, one-to-one with `AspNetUsers`** (migration `RoleProfiles`): `ClientProfiles`, `TrainerProfiles` and `ProfessionalProfiles`.
+  - Each has an int `Id`, plus a `UserId` FK with a **unique index** and **cascade delete**. The int `Id` is kept so the existing legacy-encryption pass works.
+  - Models `ClientProfile`, `TrainerProfile`, `ProfessionalProfile` and navigations on `ApplicationUser`.
+  - `ClientProfiles.HealthConditions` is added to `EncryptedColumns` (🔒).
+- **What each role is asked:**
+  - **Client:** date of birth (now required), height and weight (saved as the first `HealthMeasurement`, note "Starting measurement from registration"), main goal, activity level, and injuries/conditions/allergies (optional, ≤ 500, encrypted).
+  - **Trainer:** specialization, years of experience (0–60), qualifications or certifications (2–200).
+  - **Health professional:** profession, registration or licence number (3–50), years of experience (0–60), clinic or workplace (optional, ≤ 100).
+  - Fixed option lists are in `Helpers/ProfileOptions.cs`.
+- **How the form works:**
+  - `Register.cshtml` shows one orange-tinted section (`.ht-role-section`) per account type. Date of birth only appears for clients.
+  - `site.js` now handles `data-show-for-role` / `data-hide-for-role` for both role radios and role selects. Hidden sections are disabled, so they aren't validated or posted.
+  - On the server, `Controllers/RoleProfiles.cs` removes the other roles' fields from ModelState, checks list values, and saves (`ApplyAsync`).
+- **My account:** a new **About your health / coaching / practice** panel posts to `AccountController.UpdateDetails` (Client/Trainer/Professional). It creates the row if it's missing. Clients must keep a date of birth.
+- **Where the details appear:**
+  - **Dashboard profile cards** (`ProfileOptions.Details`). They show "Your profile is missing some details. Add them now" when an account has none, for example accounts created by an admin.
+  - **Booking list:** "Name — Specialization/Profession".
+  - **Appointment page:** the provider's summary, shown to the client.
+  - **Client's health details** for the trainer and providers: new `Shared/_ClientHealthProfile.cshtml` panel on `Clients/Details` and on Progress (provider view).
+  - **Admin user page:** a read-only Coaching/Practice details panel. Client health details aren't shown to admins.
+  - **Data export:** `HealthDetails` / `CoachingDetails` / `PracticeDetails`.
+- **Admin role change:** `RoleProfiles.RemoveOtherRolesAsync` deletes the details kept for the old role.
+- **Seeder:** `SeedUser` has optional profile fields, and `SeedRoleProfileAsync` adds them to seed users that don't have them yet. The new config values:
+  - Jamie: "Lose weight" / "Lightly active" / "Mild knee pain when running".
+  - Alex: "Strength and muscle" / 6 years / "Level 3 Personal Trainer, First Aid at Work".
+  - Dr. Patel: "General practitioner (doctor)" / MED-204518 / City Health Clinic / 12 years.
+- **Privacy page:** what we keep (health details, work details), who sees them (clients see providers' specialization/profession, admins check providers' details but not client health details), and health notes added to the encrypted list.
+- **README:** a new "Registration and role details" section, the encryption list, seed notes and the progress checklist.
+- **`TESTING-WALKTHROUGH.md`:**
+  - Seed table and supporting files.
+  - New tables, and the **1 : 1 relationships** in 4.2.
+  - Encrypted column list.
+  - Tests A-03/A-04/A-05 (role sections, new validation, tamper tests), B-03/B-04/B-05, C-01/C-03/C-13, D-01/D-07, E-01/E-06, new H-02b, J-02/J-04.
+  - Access matrix and one new observation (the browser's generic message for experience over 60).
+
+### Verification (port 5299, Development)
+- Build: 0 errors. The migration applied on startup. The seeder created all three seed profiles; Jamie's health notes are stored as `enc:CfDJ8…`.
+- **Headless Chrome (DevTools protocol), no JS errors:**
+  - Registration shows only the chosen role's section. An empty submit gives only that role's errors.
+  - **Trainer, professional and client registrations:** each succeeds, and the profile card shows its details.
+  - The new client's BMI tile shows "27.7 Overweight" from the registration measurement.
+  - The booking list shows "Alex Morgan — Strength and muscle", "Dr. Sam Patel — General practitioner (doctor)" and the new providers.
+  - **My account details:** pre-filled; clearing the goal shows an error; saving shows "Your details have been saved." and jumps to `#details`. Clearing a client's date of birth shows an error.
+  - **Trainer:** sees Jamie's "About this client" panel on Clients and Progress. Trainer experience 99 → range error.
+  - **Admin:**
+    - Sees the doctor's practice details, and no health panel on a client.
+    - On the admin2 edit page the gender field is hidden.
+    - An admin-created trainer sees the missing-details prompt, and it's replaced by the details once added.
+  - **Earlier gender run:**
+    - Options are Male/Female.
+    - The admin's My account has no gender field and saves.
+    - Users → Create hides gender when the role is switched to Admin and creates the admin without one. A client without a gender is rejected.
+    - Users → Edit with gender cleared is rejected.
+    - A client clearing their gender is rejected.
+    - Forged "Other"/"Prefer not to say" are rejected.
+- **curl:**
+  - A forged specialization is rejected.
+  - A client post without the role fields gets all five client errors.
+  - A trainer post with extra client fields creates no client profile or measurement, and date of birth stays NULL.
+  - The export shows the decrypted `HealthDetails` and the starting measurement.
+  - Client self-deletion removed the user, profile and measurement (cascade).
+  - Admin role change Professional → Trainer deleted the `ProfessionalProfiles` row.
+- **Cleanup:** deleted every non-seed account created during testing. The database now has the 4 seed accounts, 3 role profiles and no measurements.
+- **Follow-up cleanup** (after the user asked whether test data was cleaned):
+  - Deleted the 8 Mailpit emails sent to test addresses.
+  - Reset `LastLoginAt` to NULL on the admin, Jamie and Alex. Only values from the test window (12:40–13:05 UTC) were reset, since my test sign-ins had set them.
+  - Emptied the scratchpad (scripts, headless-Chrome profiles, cookie jars with session cookies, logs).
+  - Checked all 20 tables: only seed rows remain.
+  - Left the user's own app running on port 5182.
+
+## 2026-10-20 — Registration: privacy checkbox fix and required gender
+
+Commit: not committed yet
+
+### Fixed
+- **The privacy checkbox always failed in the browser, even when ticked.**
+  - Cause: `[Range(typeof(bool), "true", "true")]` rendered `data-val-range-min="True"` / `data-val-range-max="True"`. jQuery Validate's range rule compares numbers, so `"true"` was never in range.
+  - Fix: new `Helpers/MustBeTrueAttribute.cs`. It's a `ValidationAttribute` (server: value must be `true`) and an `IClientModelValidator` that emits `data-val-mustbetrue`.
+  - New `wwwroot/js/validation.js` registers the matching `mustbetrue` method and adapter (the checkbox must be checked). This is needed because the unobtrusive `required` adapter deliberately skips checkboxes.
+  - `_ValidationScriptsPartial.cshtml` now loads `validation.js` after the unobtrusive script. It's harmless on forms without the attribute.
+
+### Changed
+- `RegisterViewModel.Gender` is now `[Required(ErrorMessage = "Please select your gender.")]`. The "Select" option (empty value) shows that message in the browser and on the server. The existing server check that the value is one of Male/Female/Other/Prefer not to say still applies. Gender stays optional for admin-created users and on My account.
+- `TESTING-WALKTHROUGH.md`:
+  - A-03 has rows for missing gender and for a ticked privacy box, and the Behind the scenes note names the new files.
+  - A-04 says to choose a gender.
+  - The `sqlcmd` command now includes `-I` (QUOTED_IDENTIFIER). Without it, DELETEs on tables with filtered indexes (`Notifications`, `AspNetUsers`) fail with error 1934.
+
+### Verification
+- `dotnet build`: 0 errors. Ran on port 5299 (Development).
+- **Rendered HTML:**
+  - The checkbox now has `data-val-required` and `data-val-mustbetrue`, with no range attributes.
+  - The gender `<select>` has `data-val-required="Please select your gender."`.
+- **Server (curl POSTs with an antiforgery token):**
+
+  | Case | Result |
+  |------|--------|
+  | No gender | "Please select your gender." |
+  | Privacy unticked | Privacy error |
+  | Forged gender `Robot` | "Please choose a valid option." |
+  | Valid | 302 → /Dashboard |
+
+- **Browser (headless Chrome over the DevTools protocol):**
+  - An empty submit shows all six errors, including gender and privacy.
+  - Privacy ticked without a gender shows only the gender error and stays on the page.
+  - Choosing a gender then submits and shows the client dashboard welcome.
+  - No JavaScript errors or exceptions.
+- Removed the three test accounts created during verification (`regtest4@`, `browsertest@`, `browsertest2@example.com`) with sqlcmd. Only the four seed accounts remain.
+
+## 2026-10-20 — Privacy policy in plain language, encryption section and contact email
+
+Commit: not committed yet
+
+### Changed
+- `Views/Home/Privacy.cshtml` rewritten in everyday words. Technical terms are gone: "salted hash", "HTTPS", "rate-limited", "application log", "portability", "erasure". Sections: What we keep, Why we keep it, Who can see it, **Encryption: how we lock your information**, Other ways we keep it safe, How long we keep it, Your choices, Cookies, **Contact us**.
+- **New encryption section:**
+  - What encryption is (scrambled text plus a secret key, kept separate from the data).
+  - Exactly what's encrypted: workout and measurement notes, meals, appointment reasons, provider notes, feedback and notification messages.
+  - What that protects against, and when the information is unlocked.
+  - Passwords are kept only as a one-way code.
+  - Numbers such as weight and calories aren't encrypted, so charts can be drawn.
+- **Other corrections:**
+  - "Every page needs you to be signed in" is now "you need to sign in to see any health information" (Home and Privacy are public).
+  - The admin line now says admins see activity numbers in reports, which matches the Reports page.
+  - The page now mentions the 15-minute lockout after 5 wrong passwords and the 8-hour sign-out.
+- **Contact email:** a new `ContactEmail` setting in `appsettings.json` (`privacy@healthtrack.local`). The page reads it through an injected `IConfiguration` and shows a `mailto:` link. If the setting is empty, the page falls back to "Contact your HealthTrack administrator".
+
+### Verification
+- `dotnet build`: 0 errors.
+- Ran on port 5299 (Development), fetched `/Home/Privacy`, and confirmed all headings render and the link is `mailto:privacy@healthtrack.local`. Stopped that process afterwards.
+- That run also recreated and seeded the database dropped in the previous task (roles and the 4 seed accounts).
+
+## 2026-10-20 — Database reset
+
+Commit: none (no file changes besides this log)
+
+- Confirmed the app wasn't running (nothing listening on 5182 or 5299), so nothing was connected to the database.
+- Ran `dotnet ef database drop --force --project HealthTrack` → "Successfully dropped database 'HealthTrack'." It used the connection string from user secrets.
+- On the next run, `DbSeeder` recreates the database from all 6 migrations, creates the 4 roles, and seeds the 4 Development accounts. It also assigns the seed client to the seed trainer.
+- Not touched: the Data Protection keys in `~/.healthtrack/keys` (still needed for new encrypted data and cookies) and old emails in Mailpit.
+
+## 2026-10-20 — Full functional testing walkthrough
+
+Commit: not committed yet
+
+### Added
+- `TESTING-WALKTHROUGH.md` (repo root, ~1,260 lines): a step-by-step test script covering every feature, in the order the system is used.
+  - **Setup:** prerequisites, startup seeding, seeded accounts, and helper commands (sqlcmd in the `sql` container, `curl -I` for headers, `Reminders__*` overrides to trigger reminders straight away).
+  - **Reference sections:** role/navigation map; every controller with the views, helpers and tables it uses; all tables and columns; each relationship with cardinality, FK and delete behaviour; the 7 encrypted columns; the security controls.
+  - **Relationships:** there are no true 1:1 relationships. Trainer→clients is a 1:many self-reference on `AspNetUsers.TrainerId`. User↔role is many:many in the schema but effectively 1:1 because the app gives each user one role. Plan→exercises/meals cascade, logs/measurements/notifications cascade from the user, and plans/appointments/feedback are No action. The document explains why `AccountDeletion` deletes rows in a fixed order.
+  - **Test parts A–J (≈95 test IDs):** public pages and auth; Admin; Trainer; Client; Health professional; the appointment lifecycle (with a state diagram and an action table); notifications, emails and reminders; My account; security (IDOR, antiforgery, rate limit, CSP, XSS, encryption-at-rest SQL checks, legacy-row encryption, cookies, production safety, audit log lines); privacy (export, erasure with SQL checks, retention).
+  - Each test lists its steps, the expected messages (taken from the views and controllers), and a "Behind the scenes" note: controller/action, views, tables read and written, encryption and security.
+  - An access-control matrix (URL × role), 7 observations for testers to confirm (for example, admin email changes don't trigger re-confirmation, and an unassigned trainer keeps edit access to the plans they wrote), and a Pass/Fail sign-off checklist.
+
+### Notes
+- Documentation only. No code, configuration or database changes.
+- Written from the source at commit `351ee74`. UI labels quoted in the document were checked against the Razor views. The test steps themselves weren't run as part of this task.
+
 ## 2026-10-20 — Security hardening & data protection
 
 Commit: not committed yet

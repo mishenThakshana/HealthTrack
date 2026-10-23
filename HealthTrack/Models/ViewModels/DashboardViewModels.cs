@@ -31,6 +31,8 @@ public class MemberDashboardViewModel
     public int? Age { get; init; }
     public string? Gender { get; init; }
     public DateTime MemberSince { get; init; }
+    public IReadOnlyList<(string Label, string Value)> Details { get; init; } = [];
+    public bool DetailsMissing { get; init; }
 
     public string FirstName =>
         FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).SkipWhile(p => p.EndsWith('.')).FirstOrDefault() ?? FullName;

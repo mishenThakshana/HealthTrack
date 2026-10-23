@@ -8,7 +8,10 @@ public static class DbSeeder
 {
     private sealed record SeedUser(
         string Email, string Password, string FullName, string Role,
-        DateOnly? DateOfBirth = null, string? Gender = null, string? TrainerEmail = null);
+        DateOnly? DateOfBirth = null, string? Gender = null, string? TrainerEmail = null,
+        string? FitnessGoal = null, string? ActivityLevel = null, string? HealthConditions = null,
+        string? Specialization = null, string[]? Qualifications = null,
+        string? Profession = null, string? RegistrationNumber = null, string? Workplace = null, int YearsOfExperience = 0);
 
     public static async Task SeedAsync(IServiceProvider services)
     {
@@ -35,6 +38,37 @@ public static class DbSeeder
 
         foreach (var seed in seedUsers.Where(s => s.TrainerEmail is not null))
             await AssignTrainerAsync(userManager, seed);
+
+        foreach (var seed in seedUsers)
+            await SeedRoleProfileAsync(db, userManager, seed);
+    }
+
+    // Adds the role details a seed user would have entered at registration, if they don't have them yet.
+    private static async Task SeedRoleProfileAsync(ApplicationDbContext db, UserManager<ApplicationUser> userManager, SeedUser seed)
+    {
+        if (await userManager.FindByEmailAsync(seed.Email) is not { } user)
+            return;
+
+        if (seed.Role == Roles.Client && seed is { FitnessGoal: { } goal, ActivityLevel: { } activity }
+            && !await db.ClientProfiles.AnyAsync(p => p.UserId == user.Id))
+            db.ClientProfiles.Add(new ClientProfile { UserId = user.Id, FitnessGoal = goal, ActivityLevel = activity, HealthConditions = seed.HealthConditions });
+        else if (seed.Role == Roles.Trainer && seed is { Specialization: { } specialization, Qualifications: { Length: > 0 } qualifications }
+            && !await db.TrainerProfiles.AnyAsync(p => p.UserId == user.Id))
+            db.TrainerProfiles.Add(new TrainerProfile
+            {
+                UserId = user.Id, Specialization = specialization, YearsOfExperience = seed.YearsOfExperience,
+                Qualifications = qualifications.Select(q => new TrainerQualification { Name = q }).ToList()
+            });
+        else if (seed.Role == Roles.Professional && seed is { Profession: { } profession, RegistrationNumber: { } number }
+            && !await db.ProfessionalProfiles.AnyAsync(p => p.UserId == user.Id))
+            db.ProfessionalProfiles.Add(new ProfessionalProfile
+            {
+                UserId = user.Id, Profession = profession, RegistrationNumber = number, Workplace = seed.Workplace, YearsOfExperience = seed.YearsOfExperience
+            });
+        else
+            return;
+
+        await db.SaveChangesAsync();
     }
 
     // Rows saved before column encryption was added are still plain text; re-saving them encrypts them.

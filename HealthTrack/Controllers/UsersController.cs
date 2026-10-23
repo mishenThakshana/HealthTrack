@@ -137,6 +137,7 @@ public class UsersController(
             if (Roles.All.Contains(currentRole))
                 await userManager.RemoveFromRoleAsync(user, currentRole);
             await userManager.AddToRoleAsync(user, form.Role);
+            await RoleProfiles.RemoveOtherRolesAsync(db, user.Id, form.Role);
             await userManager.UpdateSecurityStampAsync(user);
             logger.LogInformation("Admin {AdminId} changed {UserId} from {OldRole} to {NewRole}", UserId, user.Id, currentRole, form.Role);
         }
@@ -232,7 +233,12 @@ public class UsersController(
     {
         if (!Roles.All.Contains(form.Role))
             ModelState.AddModelError(prefix + nameof(form.Role), "Please choose a valid role.");
-        if (form.Gender is not null && !AccountController.Genders.Contains(form.Gender))
+        if (form.Role == Roles.Admin)
+        {
+            ModelState.Remove(prefix + nameof(form.Gender));
+            form.Gender = null;
+        }
+        else if (form.Gender is not null && !AccountController.Genders.Contains(form.Gender))
             ModelState.AddModelError(prefix + nameof(form.Gender), "Please choose a valid option.");
         if (form.DateOfBirth is { } dob && (dob > Dates.Today || dob.Year < 1900))
             ModelState.AddModelError(prefix + nameof(form.DateOfBirth), "Please enter a valid date of birth.");
@@ -246,6 +252,14 @@ public class UsersController(
                 : error.Code.Contains("Email") ? prefix + "Email" : string.Empty;
             ModelState.AddModelError(key, error.Description);
         }
+    }
+
+    // Admins can check a trainer's or professional's details. Client health details stay private.
+    private async Task<List<(string Label, string Value)>> RoleDetailsAsync(ApplicationUser user)
+    {
+        await db.Entry(user).Reference(u => u.TrainerProfile).Query().Include(p => p.Qualifications).LoadAsync();
+        await db.Entry(user).Reference(u => u.ProfessionalProfile).LoadAsync();
+        return ProfileOptions.Details(user);
     }
 
     private async Task<string> RoleOfAsync(ApplicationUser user) =>
@@ -270,6 +284,7 @@ public class UsersController(
         Form = form,
         Reset = reset ?? new ResetPasswordViewModel(),
         IsSelf = user.Id == UserId,
+        RoleDetails = await RoleDetailsAsync(user),
         CreatedAt = user.CreatedAt,
         LastLoginAt = user.LastLoginAt,
         LockoutEnd = user.LockoutEnd,

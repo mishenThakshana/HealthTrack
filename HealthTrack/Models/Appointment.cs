@@ -31,6 +31,7 @@ public class Appointment
     public string? TrainerNote { get; set; }
 
     public bool CancelledByClient { get; set; }
+    public bool CancelledByAdmin { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

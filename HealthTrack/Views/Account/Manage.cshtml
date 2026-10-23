@@ -1,4 +1,6 @@
 @using HealthTrack.Controllers
+@using HealthTrack.Data
+@using HealthTrack.Helpers
 @model ManageAccountViewModel
 @{
     ViewData["Title"] = "My account";
@@ -51,13 +53,16 @@
                             <input asp-for="Profile.DateOfBirth" type="date" class="form-control" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
                             <span asp-validation-for="Profile.DateOfBirth" class="text-danger small"></span>
                         </div>
-                        <div class="col-sm-6">
-                            <label asp-for="Profile.Gender" class="form-label"></label>
-                            <select asp-for="Profile.Gender" asp-items="@(new SelectList(AccountController.Genders))" class="form-select">
-                                <option value="">Not set</option>
-                            </select>
-                            <span asp-validation-for="Profile.Gender" class="text-danger small"></span>
-                        </div>
+                        @if (!User.IsInRole(HealthTrack.Data.Roles.Admin))
+                        {
+                            <div class="col-sm-6">
+                                <label asp-for="Profile.Gender" class="form-label"></label>
+                                <select asp-for="Profile.Gender" asp-items="@(new SelectList(AccountController.Genders))" class="form-select">
+                                    <option value="">Select</option>
+                                </select>
+                                <span asp-validation-for="Profile.Gender" class="text-danger small"></span>
+                            </div>
+                        }
                     </div>
                     <div class="mb-3">
                         <label asp-for="Profile.CurrentPassword" class="form-label">Current password <span class="text-muted small">(only to change your email)</span></label>
@@ -67,6 +72,78 @@
                     <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save profile</button>
                 </form>
             </div>
+
+            @if (Model.RoleKey is Roles.Trainer or Roles.Professional)
+            {
+                var (icon, heading) = Model.RoleKey switch
+                {
+                    Roles.Trainer => ("bi-person-badge", "About your coaching"),
+                    _ => ("bi-hospital", "About your practice")
+                };
+                <div class="ht-panel mt-3" id="details">
+                    <div class="ht-panel-header">
+                        <h2 class="h6 mb-0"><i class="bi @icon"></i> @heading</h2>
+                    </div>
+                    <form asp-action="UpdateDetails" method="post" novalidate>
+                        @if (Model.RoleKey == Roles.Trainer)
+                        {
+                            <div class="row g-2 mb-3">
+                                <div class="col-sm-8">
+                                    <label asp-for="Trainer.Specialization" class="form-label"></label>
+                                    <select asp-for="Trainer.Specialization" asp-items="@(new SelectList(ProfileOptions.Specializations))" class="form-select">
+                                        <option value="">Select</option>
+                                    </select>
+                                    <span asp-validation-for="Trainer.Specialization" class="text-danger small"></span>
+                                </div>
+                                <div class="col-sm-4">
+                                    <label asp-for="Trainer.YearsOfExperience" class="form-label"></label>
+                                    <div class="input-group">
+                                        <input asp-for="Trainer.YearsOfExperience" type="number" min="0" max="60" class="form-control" />
+                                        <span class="input-group-text">years</span>
+                                    </div>
+                                    <span asp-validation-for="Trainer.YearsOfExperience" class="text-danger small"></span>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <partial name="_QualificationsField" for="Trainer" />
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="row g-2 mb-3">
+                                <div class="col-sm-8">
+                                    <label asp-for="Professional.Profession" class="form-label"></label>
+                                    <select asp-for="Professional.Profession" asp-items="@(new SelectList(ProfileOptions.Professions))" class="form-select">
+                                        <option value="">Select</option>
+                                    </select>
+                                    <span asp-validation-for="Professional.Profession" class="text-danger small"></span>
+                                </div>
+                                <div class="col-sm-4">
+                                    <label asp-for="Professional.YearsOfExperience" class="form-label"></label>
+                                    <div class="input-group">
+                                        <input asp-for="Professional.YearsOfExperience" type="number" min="0" max="60" class="form-control" />
+                                        <span class="input-group-text">years</span>
+                                    </div>
+                                    <span asp-validation-for="Professional.YearsOfExperience" class="text-danger small"></span>
+                                </div>
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-sm-6">
+                                    <label asp-for="Professional.RegistrationNumber" class="form-label"></label>
+                                    <input asp-for="Professional.RegistrationNumber" class="form-control" maxlength="50" />
+                                    <span asp-validation-for="Professional.RegistrationNumber" class="text-danger small"></span>
+                                </div>
+                                <div class="col-sm-6">
+                                    <label asp-for="Professional.Workplace" class="form-label"></label>
+                                    <input asp-for="Professional.Workplace" class="form-control" maxlength="100" />
+                                    <span asp-validation-for="Professional.Workplace" class="text-danger small"></span>
+                                </div>
+                            </div>
+                        }
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save details</button>
+                    </form>
+                </div>
+            }
         </div>
         <div class="col-lg-5">
             <div class="ht-panel">

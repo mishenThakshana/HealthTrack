@@ -17,7 +17,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         (typeof(Appointment), "Appointments", nameof(Appointment.Reason)),
         (typeof(Appointment), "Appointments", nameof(Appointment.TrainerNote)),
         (typeof(ProgressFeedback), "ProgressFeedback", nameof(Models.ProgressFeedback.Message)),
-        (typeof(Notification), "Notifications", nameof(Notification.Message))
+        (typeof(Notification), "Notifications", nameof(Notification.Message)),
+        (typeof(ClientProfile), "ClientProfiles", nameof(ClientProfile.HealthConditions))
     ];
 
     public DbSet<WorkoutPlan> WorkoutPlans => Set<WorkoutPlan>();
@@ -30,6 +31,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<ProgressFeedback> ProgressFeedback => Set<ProgressFeedback>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<ClientProfile> ClientProfiles => Set<ClientProfile>();
+    public DbSet<TrainerProfile> TrainerProfiles => Set<TrainerProfile>();
+    public DbSet<TrainerQualification> TrainerQualifications => Set<TrainerQualification>();
+    public DbSet<ProfessionalProfile> ProfessionalProfiles => Set<ProfessionalProfile>();
 
     public IQueryable<ApplicationUser> UsersInRole(string role) =>
         Users.Where(u => UserRoles.Any(ur => ur.UserId == u.Id && Roles.Any(r => r.Id == ur.RoleId && r.Name == role)));
@@ -52,6 +57,16 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             u.Property(x => x.RemindWorkouts).HasDefaultValue(true).HasSentinel(true);
             u.Property(x => x.RemindMeals).HasDefaultValue(true).HasSentinel(true);
         });
+
+        // Role details: each user has at most one row in the table for their role, removed with the user.
+        builder.Entity<ClientProfile>().HasOne(p => p.User).WithOne(u => u.ClientProfile)
+            .HasForeignKey<ClientProfile>(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<TrainerProfile>().HasOne(p => p.User).WithOne(u => u.TrainerProfile)
+            .HasForeignKey<TrainerProfile>(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<TrainerProfile>().HasMany(p => p.Qualifications).WithOne(q => q.TrainerProfile)
+            .HasForeignKey(q => q.TrainerProfileId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<ProfessionalProfile>().HasOne(p => p.User).WithOne(u => u.ProfessionalProfile)
+            .HasForeignKey<ProfessionalProfile>(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
 
         builder.Entity<Notification>(n =>
         {
