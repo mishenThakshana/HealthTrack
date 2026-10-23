@@ -33,8 +33,6 @@ public class MemberDashboardViewModel
     public DateTime MemberSince { get; init; }
     public IReadOnlyList<(string Label, string Value)> Details { get; init; } = [];
     public bool DetailsMissing { get; init; }
-    // Trainers only: their reviews from clients.
-    public RatingSummary? Rating { get; init; }
 
     public string FirstName =>
         FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).SkipWhile(p => p.EndsWith('.')).FirstOrDefault() ?? FullName;

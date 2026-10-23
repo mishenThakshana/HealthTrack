@@ -2,6 +2,18 @@
 
 A log of every task completed on HealthTrack, newest first.
 
+## 2026-10-23 — "My profile" card removed from the trainer dashboard
+
+Commit: not committed yet
+
+### Removed
+- **Trainer dashboard:** the "My profile" card (avatar, star rating, email, age, gender, trainer details, member since, and the Edit / Public profile links) under Appointment requests. The right column now holds only Appointment requests. Trainers can still edit their details in My account and see their public profile from the Trainers page.
+- **`Views/Dashboard/_ProfileCard.cshtml`**, which only the trainer dashboard used.
+- **Data loaded only for the card:** `DashboardController.RatingOfAsync` (two review queries per page load), the `TrainerProfile` + `Qualifications` load in `DashboardController.Trainer`, the `rating` parameter of `ToProfile`, and `MemberDashboardViewModel.Rating`. The greeting ("Hi, <first name>") still comes from `Model.Profile`.
+
+### Verified
+- Built with no warnings or errors.
+
 ## 2026-10-23 — Custom date ranges for Reports, Progress and their exports
 
 Commit: not committed yet

@@ -77,7 +77,6 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
         var user = await userManager.GetUserAsync(User);
         if (user is null)
             return Challenge();
-        await db.Entry(user).Reference(u => u.TrainerProfile).Query().Include(p => p.Qualifications).LoadAsync();
 
         var clients = await ClientsController.GetClientSummariesAsync(db, user.Id);
         var clientIds = clients.Select(c => c.Id).ToList();
@@ -87,7 +86,7 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
 
         return View(new TrainerDashboardViewModel
         {
-            Profile = ToProfile(user, rating: await RatingOfAsync(user.Id)),
+            Profile = ToProfile(user),
             Clients = clients,
             ActivePlans = await db.WorkoutPlans.CountAsync(p => p.TrainerId == user.Id && p.IsActive)
                 + await db.DietPlans.CountAsync(p => p.TrainerId == user.Id && p.IsActive),
@@ -180,13 +179,7 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
         });
     }
 
-    private async Task<RatingSummary> RatingOfAsync(string providerId)
-    {
-        var reviews = db.AppointmentReviews.Where(r => r.ProviderId == providerId);
-        return new RatingSummary(await reviews.AverageAsync(r => (double?)r.Rating), await reviews.CountAsync());
-    }
-
-    private static MemberDashboardViewModel ToProfile(ApplicationUser user, bool canAddDetails = true, RatingSummary? rating = null)
+    private static MemberDashboardViewModel ToProfile(ApplicationUser user, bool canAddDetails = true)
     {
         var details = ProfileOptions.Details(user);
 
@@ -199,8 +192,7 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
             Gender = user.Gender,
             MemberSince = user.CreatedAt,
             Details = details,
-            DetailsMissing = canAddDetails && details.Count == 0,
-            Rating = rating
+            DetailsMissing = canAddDetails && details.Count == 0
         };
     }
 }
