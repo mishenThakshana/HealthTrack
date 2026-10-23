@@ -45,7 +45,14 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
         return View(new ClientDashboardViewModel
         {
             Profile = ToProfile(user, canAddDetails: false),
-            TrainerName = await db.Users.Where(u => u.Id == user.TrainerId).Select(u => u.FullName).FirstOrDefaultAsync(),
+            Trainer = await ProvidersController.Cards(db, db.Users.Where(u => u.Id == user.TrainerId)).FirstOrDefaultAsync(),
+            ReviewPrompts = await db.Appointments
+                .Where(a => a.ClientId == user.Id
+                    && (a.Status == AppointmentStatus.Completed || (a.Status == AppointmentStatus.Approved && a.EndsAt <= now))
+                    && !db.AppointmentReviews.Any(r => r.AppointmentId == a.Id))
+                .OrderByDescending(a => a.StartsAt).Take(3)
+                .Select(a => new ReviewPrompt(a.Id, a.Trainer!.FullName, a.StartsAt))
+                .ToListAsync(),
             LatestMeasurement = latest,
             Bmi = latest is null ? null : new HealthMeasurement { WeightKg = latest.WeightKg, HeightCm = height }.Bmi,
             WorkoutsThisWeek = await weekWorkouts.CountAsync(),
@@ -86,7 +93,7 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
 
         return View(new TrainerDashboardViewModel
         {
-            Profile = ToProfile(user),
+            Profile = ToProfile(user, rating: await RatingOfAsync(user.Id)),
             Clients = clients,
             ActivePlans = await db.WorkoutPlans.CountAsync(p => p.TrainerId == user.Id && p.IsActive)
                 + await db.DietPlans.CountAsync(p => p.TrainerId == user.Id && p.IsActive),
@@ -117,7 +124,7 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
 
         return View(new ProfessionalDashboardViewModel
         {
-            Profile = ToProfile(user),
+            Profile = ToProfile(user, rating: await RatingOfAsync(user.Id)),
             TodaysAppointments = await mine
                 .Where(a => (a.Status == AppointmentStatus.Approved || a.Status == AppointmentStatus.Completed)
                     && a.StartsAt >= DateTime.Today && a.StartsAt < tomorrow)
@@ -128,7 +135,11 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
                 .OrderBy(a => a.StartsAt).Take(5).ToListAsync(),
             PendingCount = await mine.CountAsync(a => a.Status == AppointmentStatus.Pending && a.StartsAt > now),
             CompletedThisMonth = await mine.CountAsync(a => a.Status == AppointmentStatus.Completed && a.StartsAt >= monthStart),
-            ClientsSeen = await mine.Where(a => a.Status == AppointmentStatus.Completed).Select(a => a.ClientId).Distinct().CountAsync()
+            ClientsSeen = await mine.Where(a => a.Status == AppointmentStatus.Completed).Select(a => a.ClientId).Distinct().CountAsync(),
+            ChosenBy = (await db.UsersInRole(Roles.Client).Where(u => u.ProfessionalId == user.Id).OrderBy(u => u.FullName)
+                    .Select(u => new { u.Id, u.FullName, u.PhotoUpdatedAt, u.Email, u.DateOfBirth }).ToListAsync())
+                .Select(u => new ChosenByClient(new Avatar(u.Id, u.FullName, u.PhotoUpdatedAt, "ht-avatar-md"), u.Email ?? string.Empty, Dates.Age(u.DateOfBirth)))
+                .ToList()
         });
     }
 
@@ -210,19 +221,27 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
         });
     }
 
-    private static MemberDashboardViewModel ToProfile(ApplicationUser user, bool canAddDetails = true)
+    private async Task<RatingSummary> RatingOfAsync(string providerId)
+    {
+        var reviews = db.AppointmentReviews.Where(r => r.ProviderId == providerId);
+        return new RatingSummary(await reviews.AverageAsync(r => (double?)r.Rating), await reviews.CountAsync());
+    }
+
+    private static MemberDashboardViewModel ToProfile(ApplicationUser user, bool canAddDetails = true, RatingSummary? rating = null)
     {
         var details = ProfileOptions.Details(user);
 
         return new MemberDashboardViewModel
         {
+            Avatar = Avatar.Of(user, "ht-avatar-lg"),
             FullName = user.FullName,
             Email = user.Email ?? string.Empty,
             Age = Dates.Age(user.DateOfBirth),
             Gender = user.Gender,
             MemberSince = user.CreatedAt,
             Details = details,
-            DetailsMissing = canAddDetails && details.Count == 0
+            DetailsMissing = canAddDetails && details.Count == 0,
+            Rating = rating
         };
     }
 }

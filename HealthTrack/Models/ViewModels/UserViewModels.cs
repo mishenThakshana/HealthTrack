@@ -4,7 +4,7 @@ namespace HealthTrack.Models.ViewModels;
 
 public record UserRow(
     string Id, string FullName, string Email, string Role, string? TrainerName,
-    DateTime CreatedAt, DateTime? LastLoginAt, DateTimeOffset? LockoutEnd);
+    DateTime CreatedAt, DateTime? LastLoginAt, DateTimeOffset? LockoutEnd, DateTime? PhotoUpdatedAt);
 
 public class UsersIndexViewModel
 {

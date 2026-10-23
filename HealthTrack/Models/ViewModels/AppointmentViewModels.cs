@@ -61,6 +61,10 @@ public class AppointmentDetailsViewModel
     public required Appointment Appointment { get; init; }
     public bool IsProvider { get; init; }
     public bool IsAdmin { get; init; }
+    public AppointmentReview? Review { get; init; }
+    public ReviewFormViewModel ReviewForm { get; init; } = new();
+    // Shows the review form even when a review exists (after "Edit", or when the form had errors).
+    public bool EditingReview { get; init; }
 }
 
 public class AppointmentEditPageViewModel

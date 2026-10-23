@@ -1,0 +1,11 @@
+@model Avatar
+
+@if (Model.PhotoUpdatedAt is { } updated)
+{
+    <img class="ht-avatar ht-avatar-photo @Model.Size" src="@Url.Action("Show", "ProfilePhotos", new { id = Model.UserId, v = updated.Ticks })"
+         alt="@Model.Name" loading="lazy" />
+}
+else
+{
+    <span class="ht-avatar @Model.Size" role="img" aria-label="@Model.Name">@Model.Initials</span>
+}

@@ -13,5 +13,8 @@ public enum NotificationType
     MealReminder,
     PlanAssigned,
     FeedbackReceived,
-    TrainerAssigned
+    TrainerAssigned,
+    ProfessionalChosen,
+    ClientLeft,
+    ReviewReceived
 }

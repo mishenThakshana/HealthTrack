@@ -50,7 +50,7 @@ public class AccountController(
         else if (model.DateOfBirth is { } dob && (dob > DateOnly.FromDateTime(DateTime.Today) || dob.Year < 1900))
             ModelState.AddModelError(nameof(model.DateOfBirth), "Please enter a valid date of birth.");
 
-        // Drops the sections for other roles. Clients add their health details later, from their dashboard or My account.
+        // Drops the sections for other roles. Clients have no role details section.
         RoleProfiles.Validate(ModelState, model.Role, new(), model.Trainer, model.Professional);
 
         if (!ModelState.IsValid)
@@ -314,6 +314,8 @@ public class AccountController(
                 user.FullName, user.Email, user.EmailConfirmed, user.DateOfBirth, user.Gender,
                 Role = (await userManager.GetRolesAsync(user)).FirstOrDefault(),
                 Trainer = await db.Users.Where(u => u.Id == user.TrainerId).Select(u => u.FullName).FirstOrDefaultAsync(),
+                HealthProfessional = await db.Users.Where(u => u.Id == user.ProfessionalId).Select(u => u.FullName).FirstOrDefaultAsync(),
+                HasProfilePicture = user.PhotoUpdatedAt is not null,
                 user.CreatedAt, user.LastLoginAt, user.PrivacyAcceptedAt,
                 NotificationSettings = new { user.EmailAppointments, user.EmailReminders, user.EmailUpdates, user.RemindWorkouts, user.RemindMeals }
             },
@@ -350,6 +352,12 @@ public class AccountController(
                 }).ToListAsync(),
             Feedback = await db.ProgressFeedback.Where(f => f.ClientId == id || f.AuthorId == id).OrderBy(f => f.CreatedAt)
                 .Select(f => new { Client = f.Client!.FullName, Author = f.Author!.FullName, f.Message, f.CreatedAt }).ToListAsync(),
+            ReviewsWritten = await db.AppointmentReviews.Where(r => r.ClientId == id).OrderBy(r => r.CreatedAt)
+                .Select(r => new { Provider = r.Provider!.FullName, AppointmentAt = r.Appointment!.StartsAt, r.Rating, r.Comment, r.CreatedAt, r.UpdatedAt })
+                .ToListAsync(),
+            ReviewsReceived = await db.AppointmentReviews.Where(r => r.ProviderId == id).OrderBy(r => r.CreatedAt)
+                .Select(r => new { Client = r.Client!.FullName, AppointmentAt = r.Appointment!.StartsAt, r.Rating, r.Comment, r.CreatedAt })
+                .ToListAsync(),
             Notifications = await db.Notifications.Where(n => n.UserId == id).OrderBy(n => n.CreatedAt)
                 .Select(n => new { Type = n.Type.ToString(), n.Title, n.Message, n.CreatedAt, n.ReadAt }).ToListAsync()
         };
@@ -534,6 +542,8 @@ public class AccountController(
             IsClient = role == Roles.Client,
             Role = role is not null ? Roles.DisplayName(role) : "Member",
             TrainerName = user.TrainerId is null ? null : (await userManager.FindByIdAsync(user.TrainerId))?.FullName,
+            ProfessionalName = user.ProfessionalId is null ? null : (await userManager.FindByIdAsync(user.ProfessionalId))?.FullName,
+            Avatar = Avatar.Of(user, "ht-avatar-xl"),
             MemberSince = user.CreatedAt,
             LastLoginAt = user.LastLoginAt
         };

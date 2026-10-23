@@ -1,0 +1,139 @@
+@using HealthTrack.Helpers
+@model ProviderProfileViewModel
+@{
+    var p = Model.Provider;
+    ViewData["Title"] = p.FullName;
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+}
+
+<div class="container py-4">
+    @if (Model.IsClient)
+    {
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb small">
+                <li class="breadcrumb-item"><a asp-action="Index" asp-route-show="@(Model.IsTrainer ? null : "professionals")">@(Model.IsTrainer ? "Trainers" : "Health professionals")</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@p.FullName</li>
+            </ol>
+        </nav>
+    }
+
+    <div class="row g-3">
+        <div class="col-lg-4">
+            <div class="ht-panel text-center">
+                <partial name="_Avatar" model='p.Avatar("ht-avatar-xl")' />
+                <h1 class="h4 mt-3 mb-1">@p.FullName</h1>
+                <span class="badge rounded-pill bg-primary-subtle text-primary mb-2">@(Model.IsTrainer ? "Trainer" : "Health professional")</span>
+                @if (p.Headline is not null) { <div class="fw-semibold text-primary">@p.Headline</div> }
+                <div class="my-2"><partial name="_Stars" model="Model.Rating" /></div>
+
+                <dl class="ht-profile text-start mt-3 mb-0">
+                    @if (p.YearsOfExperience is { } years)
+                    {
+                        <dt>Experience</dt>
+                        <dd>@ProfileOptions.Experience(years)</dd>
+                    }
+                    @if (p.Workplace is not null)
+                    {
+                        <dt>Workplace</dt>
+                        <dd>@p.Workplace</dd>
+                    }
+                    @if (p.Qualifications.Count > 0)
+                    {
+                        <dt>Qualifications</dt>
+                        <dd class="d-flex flex-wrap gap-1">
+                            @foreach (var qualification in p.Qualifications)
+                            {
+                                <span class="badge rounded-pill bg-primary-subtle text-primary fw-normal">@qualification</span>
+                            }
+                        </dd>
+                    }
+                    <dt>Clients on HealthTrack</dt>
+                    <dd>@p.ClientCount</dd>
+                </dl>
+
+                @if (Model.IsClient)
+                {
+                    <div class="d-grid gap-2 mt-3">
+                        @if (Model.IsMine)
+                        {
+                            <span class="badge rounded-pill ht-badge-active py-2"><i class="bi bi-check-lg"></i> Your @Model.Noun</span>
+                        }
+                        else
+                        {
+                            <form asp-action="Choose" asp-route-id="@p.Id" asp-route-returnUrl="@returnUrl" method="post" class="d-grid"
+                                  data-confirm="@(Model.CurrentChoiceName is null ? null : $"Replace {Model.CurrentChoiceName} with {p.FullName} as your {Model.Noun}?")">
+                                <button type="submit" class="btn btn-primary"><i class="bi bi-person-check"></i> Choose as my @Model.Noun</button>
+                            </form>
+                        }
+                        <a class="btn btn-outline-primary" asp-controller="Appointments" asp-action="Index" asp-route-with="@p.Id" asp-fragment="book">
+                            <i class="bi bi-calendar-plus"></i> Book an appointment
+                        </a>
+                    </div>
+                }
+                else if (Model.IsSelf)
+                {
+                    <p class="small text-muted mt-3 mb-0">This is how clients see your profile. Edit your details and picture under <a asp-controller="Account" asp-action="Manage">My account</a>.</p>
+                }
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="ht-panel" id="reviews">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-star"></i> Reviews</h2>
+                    <span class="small text-muted">From clients after completed appointments</span>
+                </div>
+
+                @if (Model.Rating.Count == 0)
+                {
+                    <partial name="_EmptyState" model='new EmptyState("bi-star", $"No reviews for {p.FullName} yet.")' />
+                }
+                else
+                {
+                    <div class="row g-3 align-items-center mb-3">
+                        <div class="col-sm-4 text-center">
+                            <div class="display-6 fw-bold">@Model.Rating.Average!.Value.ToString("0.0")</div>
+                            <partial name="_Stars" model="Model.Rating" view-data='new ViewDataDictionary(ViewData) { ["Compact"] = true }' />
+                            <div class="small text-muted mt-1">@Model.Rating.Count review@(Model.Rating.Count == 1 ? "" : "s")</div>
+                        </div>
+                        <div class="col-sm-8">
+                            @for (var stars = 5; stars >= 1; stars--)
+                            {
+                                var count = Model.StarCounts[stars - 1];
+                                <div class="d-flex align-items-center gap-2 small mb-1">
+                                    <span class="ht-rating-label">@stars <i class="bi bi-star-fill text-primary" aria-hidden="true"></i></span>
+                                    <progress class="ht-rating-bar flex-grow-1" value="@count" max="@Model.Rating.Count" aria-label="@stars star reviews: @count"></progress>
+                                    <span class="ht-rating-count text-muted">@count</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <ul class="list-unstyled ht-item-list mb-0">
+                        @foreach (var r in Model.Reviews)
+                        {
+                            <li class="d-block">
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                    <partial name="_Stars" model="new RatingSummary(r.Rating, 1)" view-data='new ViewDataDictionary(ViewData) { ["Compact"] = true }' />
+                                    <span class="small fw-semibold">@(Model.IsAdmin ? r.ClientName : r.ClientShortName)</span>
+                                    <span class="small text-muted">· @r.CreatedAt.ToLocalTime().ToString("d MMM yyyy")</span>
+                                    @if (Model.IsAdmin)
+                                    {
+                                        <form asp-controller="Appointments" asp-action="DeleteReview" asp-route-id="@r.AppointmentId" asp-route-returnUrl="@returnUrl"
+                                              method="post" class="ms-auto" data-confirm="Delete this review? This can't be undone.">
+                                            <button type="submit" class="btn btn-link btn-sm text-danger p-0"><i class="bi bi-trash3"></i> Delete</button>
+                                        </form>
+                                    }
+                                </div>
+                                @if (r.Comment is not null)
+                                {
+                                    <div class="ht-prewrap">@r.Comment</div>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+</div>

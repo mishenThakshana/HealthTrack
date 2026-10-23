@@ -14,14 +14,17 @@
     </nav>
 
     <div class="ht-dash-header">
-        <div>
-            <span class="badge rounded-pill bg-primary-subtle text-primary mb-2">Client</span>
-            <h1 class="h3 mb-1">@client.FullName</h1>
-            <p class="text-muted mb-0">
-                @client.Email
-                @if (Model.Age is not null) { <span> · @Model.Age yrs</span> }
-                @if (client.Gender is not null) { <span> · @client.Gender</span> }
-            </p>
+        <div class="d-flex align-items-center gap-3">
+            <partial name="_Avatar" model='Avatar.Of(client, "ht-avatar-lg")' />
+            <div>
+                <span class="badge rounded-pill bg-primary-subtle text-primary mb-2">Client</span>
+                <h1 class="h3 mb-1">@client.FullName</h1>
+                <p class="text-muted mb-0">
+                    @client.Email
+                    @if (Model.Age is not null) { <span> · @Model.Age yrs</span> }
+                    @if (client.Gender is not null) { <span> · @client.Gender</span> }
+                </p>
+            </div>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a class="btn btn-outline-primary btn-sm" asp-controller="Progress" asp-action="Index" asp-route-id="@client.Id"><i class="bi bi-graph-up"></i> Progress &amp; feedback</a>

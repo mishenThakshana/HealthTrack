@@ -26,6 +26,7 @@ public class AdminDashboardViewModel
 
 public class MemberDashboardViewModel
 {
+    public required Avatar Avatar { get; init; }
     public string FullName { get; init; } = string.Empty;
     public string Email { get; init; } = string.Empty;
     public int? Age { get; init; }
@@ -33,6 +34,8 @@ public class MemberDashboardViewModel
     public DateTime MemberSince { get; init; }
     public IReadOnlyList<(string Label, string Value)> Details { get; init; } = [];
     public bool DetailsMissing { get; init; }
+    // Trainers and professionals only: their reviews from clients.
+    public RatingSummary? Rating { get; init; }
 
     public string FirstName =>
         FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).SkipWhile(p => p.EndsWith('.')).FirstOrDefault() ?? FullName;
@@ -41,7 +44,8 @@ public class MemberDashboardViewModel
 public class ClientDashboardViewModel
 {
     public required MemberDashboardViewModel Profile { get; init; }
-    public string? TrainerName { get; init; }
+    public ProviderCard? Trainer { get; init; }
+    public IReadOnlyList<ReviewPrompt> ReviewPrompts { get; init; } = [];
     public HealthMeasurement? LatestMeasurement { get; init; }
     public decimal? Bmi { get; init; }
     public int WorkoutsThisWeek { get; init; }
@@ -76,6 +80,10 @@ public class ProfessionalDashboardViewModel
     public int PendingCount { get; init; }
     public int CompletedThisMonth { get; init; }
     public int ClientsSeen { get; init; }
+    public IReadOnlyList<ChosenByClient> ChosenBy { get; init; } = [];
 }
+
+// A client who chose this health professional.
+public record ChosenByClient(Avatar Avatar, string Email, int? Age);
 
 public record DeleteButton(string Controller, string Action, Dictionary<string, string> RouteValues, string Confirm, string? Label = null);

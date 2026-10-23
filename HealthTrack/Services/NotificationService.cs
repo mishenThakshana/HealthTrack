@@ -21,7 +21,8 @@ public class NotificationService(
     public static NotificationCategory CategoryOf(NotificationType type) => type switch
     {
         NotificationType.WorkoutReminder or NotificationType.MealReminder => NotificationCategory.Reminders,
-        NotificationType.PlanAssigned or NotificationType.FeedbackReceived or NotificationType.TrainerAssigned => NotificationCategory.Updates,
+        NotificationType.PlanAssigned or NotificationType.FeedbackReceived or NotificationType.TrainerAssigned
+            or NotificationType.ProfessionalChosen or NotificationType.ClientLeft or NotificationType.ReviewReceived => NotificationCategory.Updates,
         _ => NotificationCategory.Appointments
     };
 
@@ -37,6 +38,9 @@ public class NotificationService(
         NotificationType.MealReminder => "bi-egg-fried",
         NotificationType.PlanAssigned => "bi-clipboard-check",
         NotificationType.FeedbackReceived => "bi-chat-left-text",
+        NotificationType.ProfessionalChosen => "bi-hospital",
+        NotificationType.ClientLeft => "bi-person-dash",
+        NotificationType.ReviewReceived => "bi-star",
         _ => "bi-person-badge"
     };
 

@@ -16,8 +16,13 @@
             {
                 <tr>
                     <td>
-                        <a class="fw-semibold" asp-controller="Clients" asp-action="Details" asp-route-id="@c.Id">@c.FullName</a>
-                        <div class="small text-muted text-break">@c.Email@(c.Age is { } age ? $" · {age} yrs" : "")</div>
+                        <div class="d-flex align-items-center gap-2">
+                            <partial name="_Avatar" model="new Avatar(c.Id, c.FullName, c.PhotoUpdatedAt)" />
+                            <div class="ht-min-w-0">
+                                <a class="fw-semibold" asp-controller="Clients" asp-action="Details" asp-route-id="@c.Id">@c.FullName</a>
+                                <div class="small text-muted text-break">@c.Email@(c.Age is { } age ? $" · {age} yrs" : "")</div>
+                            </div>
+                        </div>
                     </td>
                     <td class="text-end text-nowrap">@(c.LatestWeightKg is { } w ? $"{w:0.0} kg" : "—")</td>
                     <td class="text-end">@c.WorkoutsThisWeek</td>

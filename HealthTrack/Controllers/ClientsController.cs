@@ -59,6 +59,7 @@ public class ClientsController(ApplicationDbContext db, UserManager<ApplicationU
                 u.FullName,
                 u.Email,
                 u.DateOfBirth,
+                u.PhotoUpdatedAt,
                 LatestWeight = db.HealthMeasurements.Where(m => m.ClientId == u.Id)
                     .OrderByDescending(m => m.Date).ThenByDescending(m => m.Id)
                     .Select(m => (decimal?)m.WeightKg).FirstOrDefault(),
@@ -74,7 +75,7 @@ public class ClientsController(ApplicationDbContext db, UserManager<ApplicationU
         return clients.Select(c => new ClientSummary(
                 c.Id, c.FullName, c.Email ?? string.Empty, Dates.Age(c.DateOfBirth), c.LatestWeight,
                 c.WorkoutsThisWeek, c.ActivePlans,
-                new[] { c.LastWorkout, c.LastMeal, c.LastMeasurement }.Max()))
+                new[] { c.LastWorkout, c.LastMeal, c.LastMeasurement }.Max(), c.PhotoUpdatedAt))
             .ToList();
     }
 }

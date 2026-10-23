@@ -2,6 +2,146 @@
 
 A log of every task completed on HealthTrack, newest first.
 
+## 2026-10-23 — Clients can rate past appointments the provider never marked as completed
+
+Commit: not committed yet
+
+### Fixed
+- **Rating past appointments:** before, `AppointmentRules.CanReview` only allowed rating once the provider clicked **Mark as completed**, so a past appointment still marked Approved could never be rated. It now also allows **Approved appointments that have ended** (`EndsAt <= now`). The status isn't changed by rating, and the provider can still mark it completed.
+  - The same rule applies to the review form on the appointment page (`_Review.cshtml`), the `Review` POST action, and the client dashboard's **Rate your appointments** panel (`DashboardController.Client` query).
+- **Cleanup:** deleted the `navtest…@example.com` client account created while testing the previous task (admin → Users → Delete).
+
+### Verified
+- Built with no warnings. I couldn't test rating end to end: the dev database has no approved past appointment I could reach, and booking doesn't allow past dates.
+
+## 2026-10-23 — Find experts moved up; client dashboard trimmed; "choose your experts" banner
+
+Commit: not committed yet
+
+### Changed
+- **Menu (`_Layout.cshtml`):** for clients, **Find experts** is now the 2nd item, right after Dashboard (before Plans, Appointments and Track).
+- **Client dashboard (`Views/Dashboard/Client.cshtml`):** removed the **My team** panel and the **profile card**. The trainer and professional are still shown on Find experts, and the header still names the trainer. The unused `ClientDashboardViewModel.Professional` property and its query in `DashboardController.Client` were removed. Trainer and professional dashboards keep their profile cards.
+
+### Added
+- **"Choose your experts" banner (`_Layout.cshtml`):** shown to clients on every page (styled like the confirm-email banner) while they have no trainer and/or no health professional. The text names what's missing ("a trainer or health professional", "a trainer" or "a health professional") and the **Find experts** button opens the matching tab (`?show=professionals` when only the professional is missing). It's hidden on the Find experts pages themselves and disappears once both are chosen.
+
+### Verified
+- Built with no warnings. Ran on port 5299, registered a new client: the menu reads Dashboard → Find experts → Plans → Appointments → Track, the banner shows on the dashboard and not on `/Providers`, and the dashboard no longer has My team or the profile card.
+
+## 2026-10-23 — Appointment ratings and reviews; "Find experts" menu name; orange instead of Bootstrap blue
+
+Commit: not committed yet
+
+### Changed
+- **Menu:** the client's "My team" nav item is now **Find experts** (`bi-search-heart` icon). The professional dashboard's empty-state text was updated to match. The client dashboard panel keeps the name "My team", since it shows the client's own trainer and professional.
+- **Bootstrap blue replaced with the primary orange** (`site.css`): `.nav-pills` active background and link colors (the Trainers / Health professionals tabs were blue), `.text-primary-emphasis` (qualification chips were dark blue), `.dropdown-menu` active item, and the `.nav-link` focus ring. The light-blue "Completed" appointment badge (`ht-badge-completed`) is a deliberate status color and was left as is.
+
+### Added — ratings and reviews after appointments
+- **`Models/AppointmentReview.cs`:** table `AppointmentReviews` with `AppointmentId` (unique; cascade-deleted with the appointment), `ClientId`, `ProviderId` (both `NoAction`), `Rating`, `Comment` (≤1000), `CreatedAt` and `UpdatedAt`. It has check constraint `CK_AppointmentReviews_Rating` (`[Rating] BETWEEN 1 AND 5`) and index `(ProviderId, CreatedAt)`. `Comment` is added to `EncryptedColumns`, so it's encrypted at rest and covered by the legacy-row encryption pass. Migration `20261023065103_AppointmentReviews`.
+- **`AppointmentRules.CanReview`:** the appointment's status is Completed.
+- **`AppointmentsController`:**
+  - `Details(id, editReview)` loads the review and fills `ReviewForm`.
+  - `Review(id)` (clients only, own completed appointments via `Mine()`) creates or updates the review. A new review notifies the provider (`ReviewReceived`: "… rated your appointment on … 4 out of 5"). Validation errors re-show the form.
+  - `DeleteReview(id, returnUrl)` lets clients delete their own reviews and admins delete any; the deletion is logged.
+  - The completion notification now tells the client "Open it to leave a rating and feedback." It isn't added to the copy a provider gets when an admin completes the appointment.
+  - The controller now takes an `ILogger`.
+- **`Views/Appointments/_Review.cshtml`** (on the appointment page):
+  - For clients: a star picker (radio buttons, keyboard-accessible, CSS-only hover/checked fill), optional feedback, Submit or Save changes, Cancel. After submitting, they see their review with Edit and Delete.
+  - Providers see the review read-only or "hasn't rated this yet". Admins see it with Delete.
+- **`ReviewViewModels.cs`:** `ReviewFormViewModel` (required, Range 1–5), `RatingSummary`, `ReviewItem` (with `ClientShortName` → "Omar S."), `ProviderProfileViewModel`, `ReviewPrompt`.
+- **`Views/Shared/_Stars.cshtml`:** five stars (filled to the nearest half), the average, and the count (`Compact` hides the count), with screen-reader text.
+- **Provider profile page `ProvidersController.Details` + `Views/Providers/Details.cshtml`:**
+  - Shows the picture, role, headline, stars, experience, workplace, qualifications and client count.
+  - Clients get Choose and Book buttons there; Choose now accepts a `returnUrl`.
+  - A reviews panel shows the big average, a 5→1 breakdown (`<progress>` bars, since the CSP forbids inline styles) and the latest 50 reviews.
+  - **Access:** clients (who can't open disabled accounts), admins (who see full names and Delete), and the provider themselves. Others get 404. The controller is now `[Authorize]`, with `Index`/`Choose`/`Leave` kept client-only.
+- **Find experts page:** cards show stars and link to the profile ("Profile & reviews"); a new **Sort by name / Top rated** option (average, then review count, then name). `ProviderCard` gained `AverageRating`, `ReviewCount` and `Rating`.
+- **Dashboards:**
+  - **Client:** a "Rate your appointments" panel (the 3 latest completed, unrated appointments with a Rate button), shown only when there are any. My team shows each provider's stars and links to their profile.
+  - **Trainer/professional:** the profile card shows their rating (linked to their reviews) and a "Public profile" link (`MemberDashboardViewModel.Rating`, `DashboardController.RatingOfAsync`).
+- **Admin:** Users → Edit shows a "Profile & reviews" button for trainers and professionals.
+- **Data export:** `ReviewsWritten` (clients) and `ReviewsReceived` (providers).
+- **Notifications:** new `ReviewReceived` type (Updates category, `bi-star`).
+
+### Docs
+- README: new "Ratings and reviews" section; "My team" renamed to "Find experts", now covering profile pages, top-rated sorting and the "Who can do what" row.
+
+### Verification (port 5299, Development; build 0 errors, 0 warnings)
+- Migration applied on startup. Registered 2 temporary clients and 2 temporary professionals. Scripted HTTP test:
+  - **Before completion:** no review panel, and `Review` → 404. Booked, approved, moved the time to the past (SQL), and completed.
+  - **After completion:** the client is told to rate and the dashboard prompt links to `#review`.
+  - **Validation:** a missing rating and a rating of 9 both show "Please choose a rating from 1 to 5 stars."; another client → 404.
+  - **Submit:** 4 stars with a comment containing `<b>` → stored with `enc:`; the provider is notified "4 out of 5"; the HTML shows escaped. The edit form is prefilled; editing to 5 still leaves 1 row; the dashboard prompt disappears; the provider sees it read-only.
+  - **Profile:** shows 5.0 and the client as "Omar S." (checked as a non-admin); "Top rated" puts the rated professional first; the provider dashboard shows "Rated 5.0 out of 5" with a profile link. The provider can open their own profile; another professional gets 404; anonymous users are redirected; a client id as a provider id → 404; admins see the full name and Delete; admins can't open `/Providers`.
+  - **Admin:** the Users → Edit link works. The exports contain the reviews. Another client deleting → 404; the admin deletes via the profile page → 302 back to the profile, 0 rows left.
+  - **Database:** a direct insert with rating 7 is rejected by the check constraint. Deleting the client's account removed their reviews (cascade through appointments).
+- **Real browser (Playwright + Chrome, 1280px and 390px):** uploaded sample pictures through My account. Took screenshots of Find experts (orange tabs, stars, sorting), the profile page, the review form (star picker), the submitted review, the client dashboard and mobile; no console errors.
+- **Cleanup:** deleted all temporary accounts with their appointments, reviews, notifications and pictures; reseeded the `Appointments` identity. No notifications went to real accounts. Stopped only the port-5299 process.
+
+## 2026-10-23 — Profile pictures, sample photos, and clients choosing their own trainer and health professional
+
+Commit: not committed yet
+
+### Requirements check (CS6004ES coursework 2 brief, `AD CW 02.docx`)
+- Nothing in the brief conflicts with these features. They are additions on top of the required ones:
+  - **Admin dashboard "trainer assignments":** still shown. Clients' own choices use the same `TrainerId`, so they appear in the admin's assignment counts and on the Assignments page, and admins can still assign and reassign.
+  - **"Trainers manage clients' routines":** unchanged. A trainer a client chooses gets the same access as one an admin assigns.
+  - **Appointments with trainers or healthcare professionals:** unchanged. The browse page's Book button only preselects who to see.
+  - **Notifications:** choosing, switching and removing a provider send in-app (and optional email) notifications.
+  - **Security and data protection:** pictures are type-checked by content, size-limited, protected by anti-forgery tokens, and access-controlled. A client's picture is only visible to the people who work with them. Choosing a health professional is the client's own consent to share progress with them, and removing them takes that access away.
+- One thing to be ready to explain in the viva: since the previous task, clients no longer enter a goal, activity level or health conditions. "Clients manage personal health data" is still covered by measurements, workout and meal logs, and Progress.
+
+### Added — profile pictures (all roles)
+- **`Models/ProfilePhoto.cs`:** table `ProfilePhotos` (`UserId` PK/FK, `Data` varbinary(max), `ContentType`), cascade-deleted with the user. Kept separate from `AspNetUsers` so loading a user doesn't load the image.
+- **`ApplicationUser.PhotoUpdatedAt`:** null when there's no picture. Views use it to choose between the picture and initials, and as the `?v=` cache-buster.
+- **`Helpers/ProfilePhotoRules.cs`:** 2 MB limit, and `DetectContentType` checks the first bytes for JPEG, PNG or WebP (the client-supplied Content-Type and file name are ignored).
+- **`Controllers/ProfilePhotosController.cs`** (`[Authorize]`):
+  - `Show(id)` returns the image with `Cache-Control: private, max-age=31536000, immutable`, or 404 if the viewer may not see it.
+  - `Upload(photo)` has `[RequestSizeLimit]` and anti-forgery. It validates, upserts the row and then sets `PhotoUpdatedAt`.
+  - `Remove()`.
+  - **Visibility (`CanSeeAsync`):** yourself; admins; any trainer or professional's picture; a client's picture only for their trainer, their chosen professional, or providers with an appointment with them.
+- **`Avatar` record** (`Models/ViewModels/AvatarViewModel.cs`) and **`Views/Shared/_Avatar.cshtml`:** renders the picture or the initials circle. Sizes `ht-avatar-md`, `-lg` and `-xl`, with CSS in `site.css`; avatars inside `main` use the soft orange tint.
+- **Where it shows:** navbar account button (`_LoginPartial`, replacing the inline initials code); My account (new "Profile picture" panel with Upload/Replace and Remove, plus help text saying who can see it); dashboard profile card (with an "Add a profile picture" link); client dashboard My team; professional dashboard "Clients who chose you"; the browse page; the trainer's client table (`_ClientTable`, `ClientSummary.PhotoUpdatedAt`) and client page header; and the admin Users list (`UserRow.PhotoUpdatedAt`).
+- **Data export** (`DownloadData`) now includes `HasProfilePicture` and `HealthProfessional`.
+
+### Added — My team: clients choose a trainer and a health professional
+- **`ApplicationUser.ProfessionalId`:** self-referencing FK, `NoAction`, indexed.
+- **`Controllers/ProvidersController.cs`** (`[Authorize(Roles = Client)]`):
+  - `Index(show, q, focus)` has Trainers and Health professionals tabs, a search (name, specialization, qualification, profession, workplace) and a specialization/profession filter validated against `ProfileOptions`. Disabled accounts are left out.
+  - `Choose(id)` checks the role, not the profile row, so a trainer without a profile still counts as a trainer. It sets `TrainerId` or `ProfessionalId` and notifies the new provider and, if there was one, the replaced provider.
+  - `Leave(role)` clears the choice and notifies the provider.
+  - `Cards(db, users)` is a static projection that the client dashboard also uses.
+- **`Views/Providers/Index.cshtml`:** "Your trainer" and "Your health professional" summary with Remove (confirm); provider cards with picture, headline, experience, workplace, qualification chips and client count; "Choose as my …" (asks to confirm when replacing someone); Book. The current choice is highlighted (`ht-provider-mine`).
+- **Nav:** "My team" link for clients.
+- **Client dashboard:** new "My team" panel (trainer and professional with pictures, or links to choose one). The header greeting now uses `Model.Trainer` (`ClientDashboardViewModel.TrainerName` replaced by `Trainer`/`Professional` `ProviderCard`s).
+- **Professional dashboard:** "Clients who chose you" panel linking to each client's Progress page (`ProfessionalDashboardViewModel.ChosenBy`).
+- **`ClientAccess.VisibleClients`:** professionals now also see clients whose `ProfessionalId` is them, which gives them Progress and feedback access.
+- **Appointments:** `Index(with)` preselects a provider if the id is a trainer or professional. The booking panel has `id="book"`.
+- **Notifications:** new `ProfessionalChosen` and `ClientLeft` types (Updates category; icons `bi-hospital` and `bi-person-dash`). The trainer's "New clients assigned to me" switch is now "Clients choosing or leaving me" and also shows for health professionals.
+- **Admin role changes (`UsersController.Edit`):** a non-client loses both `TrainerId` and `ProfessionalId`. When a professional's role changes, clients who chose them are unlinked (there's no admin screen for that link, so blocking the change would leave admins stuck).
+- Migration `20261023061634_ProfilePhotosAndChosenProfessional`.
+
+### Added — sample pictures
+- `profile-pictures/` (repository root): `trainer-1..3`, `professional-1..2`, `client-1..3`, `admin-1` (`.jpg`, 600×600, 27–97 KB), all CC0 or public domain from Wikimedia Commons (mostly Unsplash and Pexels imports). `CREDITS.md` lists the source, photographer and licence for each.
+- Unsplash, Pexels and Pixabay block scripted downloads (bot check / 403), and Openverse's CC0 stock (rawpixel) was mostly historical images. Commons "Personal Trainer (…)" files turned out to be photos of a band of that name, so they weren't used.
+
+### Docs
+- README: new "Profile pictures" and "My team" sections. Updated the client registration details (no health details section any more), feedback access, the "Who can do what" table and the progress list. Also updated a stale comment in `AccountController.Register`.
+
+### Verification (port 5299, Development; build 0 errors, 0 warnings)
+- Migration applied on startup. Registered a temporary client and professional, and ran a scripted HTTP test:
+  - **Upload:** PNG → 302, picture shown on My account; `Show` returns `image/png` with the long private cache header.
+  - **Rejected uploads:** a text file named `.png` → "Please upload a JPG, PNG or WebP picture."; a file over 2 MB → "too big"; a request without the anti-forgery token → 400.
+  - **Visibility:** the professional got 404 for the client's picture before being chosen and 200 after; the client sees the professional's picture (200); admin 200; anonymous users are redirected to login.
+  - **Browse:** trainers tab lists Coach Reddy; searching "physio" finds the professional and their workplace; a search with no matches shows the empty message; the Nurse filter hides the physiotherapist. Professionals and admins can't open `/Providers`.
+  - **Choose a professional:** the card is marked "Your health professional"; the professional's dashboard lists the client, `/Progress/Index/{client}` gives 200, and they get the "chose you" notification; the client's dashboard My team shows them.
+  - **Book link:** preselects the provider.
+  - **Choose a trainer:** the dashboard says "Your trainer is …". Choosing a non-provider id (the client's own) → 404.
+  - **Remove the professional:** their access to the picture and Progress → 404, and they get the "removed you" notification. Removing the picture → `Show` 404.
+  - Users, the admin dashboard and Assignments → 200. The data export contains the new fields. No errors in the server log.
+- **Cleanup:** deleted the two temporary accounts (and their picture and profile by cascade) and the two test notifications sent to Coach Reddy. Stopped only the port-5299 process.
+- Not checked in a real browser; layout was only checked through the HTML.
+
 ## 2026-10-23 — Remove "About your health" from clients' My account page
 
 Commit: not committed yet

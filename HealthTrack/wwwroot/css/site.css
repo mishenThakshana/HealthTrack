@@ -84,6 +84,26 @@ main {
   border-color: var(--ht-orange);
 }
 
+/* Bootstrap hard-codes blue for these; use the brand orange instead. */
+.nav-pills {
+  --bs-nav-pills-link-active-bg: var(--ht-orange);
+  --bs-nav-pills-link-active-color: #fff;
+  --bs-nav-link-color: var(--ht-orange-dark);
+  --bs-nav-link-hover-color: #9a3412;
+}
+
+.nav-link:focus-visible {
+  box-shadow: 0 0 0 .25rem rgba(234, 88, 12, .25);
+}
+
+.text-primary-emphasis {
+  color: var(--ht-orange-dark) !important;
+}
+
+.dropdown-menu {
+  --bs-dropdown-link-active-bg: var(--ht-orange);
+}
+
 .ht-navbar {
   background-color: var(--ht-orange);
   box-shadow: 0 2px 8px rgba(194, 65, 12, .25);
@@ -453,6 +473,34 @@ main {
   flex-shrink: 0;
 }
 
+/* Avatars outside the navbar sit on white panels, so they use the soft brand tint instead of white. */
+main .ht-avatar {
+  background-color: var(--ht-orange-soft);
+}
+
+.ht-avatar-photo {
+  object-fit: cover;
+  background-color: var(--ht-orange-soft);
+}
+
+.ht-avatar-md {
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: .95rem;
+}
+
+.ht-avatar-lg {
+  width: 4rem;
+  height: 4rem;
+  font-size: 1.35rem;
+}
+
+.ht-avatar-xl {
+  width: 6rem;
+  height: 6rem;
+  font-size: 2rem;
+}
+
 .ht-user-text {
   flex-direction: column;
   align-items: flex-start;
@@ -795,3 +843,88 @@ main {
 .ht-prose li {
   margin-bottom: .35rem;
 }
+
+.ht-photo-input {
+  max-width: 18rem;
+}
+
+.ht-provider-mine {
+  border-color: var(--ht-orange);
+  box-shadow: 0 0 0 1px var(--ht-orange);
+}
+
+.ht-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: .1rem;
+  color: var(--ht-orange);
+  font-size: .9rem;
+  white-space: nowrap;
+}
+
+.ht-stars-text {
+  margin-left: .35rem;
+  color: var(--ht-text);
+  font-size: .85rem;
+}
+
+/* Star picker: radios are listed 5 → 1 and shown reversed, so "~" reaches the lower stars to the left. */
+.ht-star-input {
+  display: inline-flex;
+  flex-direction: row-reverse;
+  gap: .25rem;
+}
+
+.ht-star-input label {
+  font-size: 1.75rem;
+  line-height: 1;
+  color: #e5e7eb;
+  cursor: pointer;
+  transition: color .1s ease-in-out;
+}
+
+.ht-star-input input:checked ~ label,
+.ht-star-input label:hover,
+.ht-star-input label:hover ~ label {
+  color: var(--ht-orange);
+}
+
+.ht-star-input input:focus-visible + label {
+  outline: 2px solid var(--ht-orange);
+  outline-offset: 2px;
+  border-radius: .25rem;
+}
+
+.ht-rating-label {
+  width: 3.25rem;
+  white-space: nowrap;
+}
+
+.ht-rating-count {
+  width: 2rem;
+  text-align: end;
+}
+
+.ht-rating-bar {
+  appearance: none;
+  height: .5rem;
+  border: 0;
+  border-radius: 1rem;
+  overflow: hidden;
+  background-color: var(--ht-orange-soft);
+}
+
+.ht-rating-bar::-webkit-progress-bar {
+  background-color: var(--ht-orange-soft);
+}
+
+.ht-rating-bar::-webkit-progress-value {
+  background-color: var(--ht-orange);
+  border-radius: 1rem;
+}
+
+.ht-rating-bar::-moz-progress-bar {
+  background-color: var(--ht-orange);
+  border-radius: 1rem;
+}
+

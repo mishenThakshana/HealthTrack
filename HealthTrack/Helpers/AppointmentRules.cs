@@ -21,6 +21,11 @@ public static class AppointmentRules
 
     public static bool CanComplete(Appointment a) => a.Status == AppointmentStatus.Approved && !IsUpcoming(a);
 
+    // Clients rate an appointment once it has been marked as completed, or once an approved one has ended
+    // (providers don't always mark past appointments as completed).
+    public static bool CanReview(Appointment a) =>
+        a.Status == AppointmentStatus.Completed || (a.Status == AppointmentStatus.Approved && a.EndsAt <= DateTime.Now);
+
     public static string StatusLabel(Appointment a) => a.Status switch
     {
         AppointmentStatus.Pending when !IsUpcoming(a) => "Expired",

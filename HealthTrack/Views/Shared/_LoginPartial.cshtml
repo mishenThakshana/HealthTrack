@@ -8,17 +8,13 @@
 
 @if (user is not null)
 {
-    var initials = string.Concat(user.FullName
-        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-        .Take(2)
-        .Select(part => char.ToUpperInvariant(part[0])));
     var role = Roles.All.FirstOrDefault(User.IsInRole) is { } r ? Roles.DisplayName(r) : "Member";
 
     <div class="d-flex align-items-center gap-2 ms-auto order-lg-last">
         @await Component.InvokeAsync("NotificationBell")
         <div class="dropdown">
             <button class="ht-user-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <span class="ht-avatar">@initials</span>
+                <partial name="_Avatar" model="Avatar.Of(user)" />
                 <span class="ht-user-text d-none d-md-flex">
                     <span class="ht-user-name">@user.FullName</span>
                     <span class="ht-user-role">@role</span>

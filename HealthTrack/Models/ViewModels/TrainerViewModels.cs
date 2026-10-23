@@ -2,7 +2,7 @@ namespace HealthTrack.Models.ViewModels;
 
 public record ClientSummary(
     string Id, string FullName, string Email, int? Age, decimal? LatestWeightKg,
-    int WorkoutsThisWeek, int ActivePlans, DateOnly? LastActivity);
+    int WorkoutsThisWeek, int ActivePlans, DateOnly? LastActivity, DateTime? PhotoUpdatedAt);
 
 public class ClientDetailsViewModel
 {

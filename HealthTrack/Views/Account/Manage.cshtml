@@ -14,12 +14,39 @@
             <p class="text-muted mb-0">
                 Member since @Model.MemberSince.ToLocalTime().ToString("d MMM yyyy")
                 @if (Model.TrainerName is not null) { <span> · your trainer is @Model.TrainerName</span> }
+                @if (Model.ProfessionalName is not null) { <span> · your health professional is @Model.ProfessionalName</span> }
             </p>
         </div>
     </div>
 
     <div class="row g-3">
         <div class="col-lg-7">
+            <div class="ht-panel mb-3" id="photo">
+                <div class="ht-panel-header">
+                    <h2 class="h6 mb-0"><i class="bi bi-camera"></i> Profile picture</h2>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                    <partial name="_Avatar" model="Model.Avatar" />
+                    <div class="flex-grow-1 ht-min-w-0">
+                        <form asp-controller="ProfilePhotos" asp-action="Upload" method="post" enctype="multipart/form-data" class="d-flex flex-wrap gap-2">
+                            <input type="file" name="photo" accept="@ProfilePhotoRules.Accept" class="form-control form-control-sm ht-photo-input" aria-label="Choose a picture" required />
+                            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-upload"></i> @(Model.Avatar.PhotoUpdatedAt is null ? "Upload" : "Replace")</button>
+                        </form>
+                        <div class="form-text">
+                            JPG, PNG or WebP, up to 2 MB. Square pictures look best.
+                            @(Model.IsClient
+                                ? "Only you, your trainer and the health professionals you see can view it."
+                                : Model.RoleKey == Roles.Admin ? "Only administrators can view it." : "Clients see it when they browse trainers and health professionals.")
+                        </div>
+                        @if (Model.Avatar.PhotoUpdatedAt is not null)
+                        {
+                            <form asp-controller="ProfilePhotos" asp-action="Remove" method="post" class="mt-2" data-confirm="Remove your profile picture?">
+                                <button type="submit" class="btn btn-link btn-sm text-danger p-0"><i class="bi bi-trash3"></i> Remove picture</button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            </div>
             <div class="ht-panel">
                 <div class="ht-panel-header">
                     <h2 class="h6 mb-0"><i class="bi bi-person"></i> Profile</h2>
@@ -208,11 +235,11 @@
                             <input type="hidden" asp-for="Notifications.EmailReminders" />
                             <input type="hidden" asp-for="Notifications.RemindWorkouts" />
                             <input type="hidden" asp-for="Notifications.RemindMeals" />
-                            @if (User.IsInRole(HealthTrack.Data.Roles.Trainer))
+                            @if (User.IsInRole(HealthTrack.Data.Roles.Trainer) || User.IsInRole(HealthTrack.Data.Roles.Professional))
                             {
                                 <div class="form-check form-switch mb-3">
                                     <input asp-for="Notifications.EmailUpdates" class="form-check-input" role="switch" />
-                                    <label class="form-check-label" for="Notifications_EmailUpdates">New clients assigned to me</label>
+                                    <label class="form-check-label" for="Notifications_EmailUpdates">Clients choosing or leaving me</label>
                                 </div>
                             }
                             else

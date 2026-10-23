@@ -1,0 +1,23 @@
+@model RatingSummary
+@* Five stars filled to the nearest half, with the average and count beside them. ViewData["Compact"] hides the count. *@
+@{
+    var average = Model.Average ?? 0;
+    var compact = ViewData["Compact"] is true;
+}
+
+<span class="ht-stars" title="@Model.Label">
+    <span class="visually-hidden">@(Model.Average is { } a ? $"Rated {a:0.0} out of 5" : "Not rated yet")</span>
+    @for (var i = 1; i <= 5; i++)
+    {
+        var icon = average >= i - 0.25 ? "bi-star-fill" : average >= i - 0.75 ? "bi-star-half" : "bi-star";
+        <i class="bi @icon" aria-hidden="true"></i>
+    }
+    @if (Model.Average is { } avg)
+    {
+        <span class="ht-stars-text" aria-hidden="true"><strong>@avg.ToString("0.0")</strong>@(compact ? "" : $" ({Model.Count})")</span>
+    }
+    else if (!compact)
+    {
+        <span class="ht-stars-text text-muted" aria-hidden="true">No reviews yet</span>
+    }
+</span>

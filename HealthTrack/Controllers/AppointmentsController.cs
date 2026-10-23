@@ -13,7 +13,11 @@ using Microsoft.EntityFrameworkCore;
 namespace HealthTrack.Controllers;
 
 [Authorize(Roles = Roles.Client + "," + Roles.AppointmentManagers)]
-public class AppointmentsController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, NotificationService notifications) : Controller
+public class AppointmentsController(
+    ApplicationDbContext db,
+    UserManager<ApplicationUser> userManager,
+    NotificationService notifications,
+    ILogger<AppointmentsController> logger) : Controller
 {
     private string UserId => userManager.GetUserId(User)!;
     private bool IsAdmin => User.IsInRole(Roles.Admin);
@@ -21,22 +25,87 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
     // Trainers and professionals manage their own appointments; admins manage everyone's.
     private bool IsProvider => User.IsInRole(Roles.Trainer) || User.IsInRole(Roles.Professional) || IsAdmin;
 
-    public async Task<IActionResult> Index()
+    // "with" preselects who to book, for example from the Trainers & health professionals page.
+    public async Task<IActionResult> Index(string? with)
     {
         var form = new AppointmentRequestViewModel();
         if (!IsProvider)
-            form.TrainerId = await db.Users.Where(u => u.Id == UserId).Select(u => u.TrainerId).FirstOrDefaultAsync() ?? string.Empty;
+            form.TrainerId = with is not null && await Providers().AnyAsync(u => u.Id == with)
+                ? with
+                : await db.Users.Where(u => u.Id == UserId).Select(u => u.TrainerId).FirstOrDefaultAsync() ?? string.Empty;
 
         return View(await BuildPageAsync(form));
     }
 
-    public async Task<IActionResult> Details(int id)
+    public async Task<IActionResult> Details(int id, bool editReview = false)
     {
         var appointment = await LoadAsync(id);
         if (appointment is null)
             return NotFound();
 
-        return View(new AppointmentDetailsViewModel { Appointment = appointment, IsProvider = IsProvider, IsAdmin = IsAdmin });
+        var review = await db.AppointmentReviews.AsNoTracking().FirstOrDefaultAsync(r => r.AppointmentId == id);
+        return View(new AppointmentDetailsViewModel
+        {
+            Appointment = appointment,
+            IsProvider = IsProvider,
+            IsAdmin = IsAdmin,
+            Review = review,
+            ReviewForm = new ReviewFormViewModel { Rating = review?.Rating, Comment = review?.Comment },
+            EditingReview = editReview
+        });
+    }
+
+    // Clients rate a completed (or approved and ended) appointment, or change the rating they gave.
+    [HttpPost, Authorize(Roles = Roles.Client), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Review(int id, [Bind(Prefix = "ReviewForm")] ReviewFormViewModel form)
+    {
+        var appointment = await LoadAsync(id);
+        if (appointment is null || !AppointmentRules.CanReview(appointment))
+            return NotFound();
+
+        var review = await db.AppointmentReviews.FirstOrDefaultAsync(r => r.AppointmentId == id);
+        if (!ModelState.IsValid)
+            return View(nameof(Details), new AppointmentDetailsViewModel
+            {
+                Appointment = appointment, Review = review, ReviewForm = form, EditingReview = true
+            });
+
+        var comment = string.IsNullOrWhiteSpace(form.Comment) ? null : form.Comment.Trim();
+        if (review is null)
+        {
+            db.AppointmentReviews.Add(new AppointmentReview
+            {
+                AppointmentId = id, ClientId = UserId, ProviderId = appointment.TrainerId, Rating = form.Rating!.Value, Comment = comment
+            });
+            await db.SaveChangesAsync();
+            await notifications.NotifyAsync(appointment.TrainerId, NotificationType.ReviewReceived, "New review",
+                $"{appointment.Client!.FullName} rated your appointment on {When(appointment)} {form.Rating} out of 5.", DetailsLink(appointment));
+            TempData["Success"] = "Thanks for your review!";
+        }
+        else
+        {
+            (review.Rating, review.Comment, review.UpdatedAt) = (form.Rating!.Value, comment, DateTime.UtcNow);
+            await db.SaveChangesAsync();
+            TempData["Success"] = "Your review has been updated.";
+        }
+
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    // Clients can withdraw their own review; admins can remove any review (for example, an inappropriate one).
+    [HttpPost, Authorize(Roles = Roles.Client + "," + Roles.Admin), ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteReview(int id, string? returnUrl)
+    {
+        var review = await db.AppointmentReviews.FirstOrDefaultAsync(r => r.AppointmentId == id && (IsAdmin || r.ClientId == UserId));
+        if (review is null)
+            return NotFound();
+
+        db.AppointmentReviews.Remove(review);
+        await db.SaveChangesAsync();
+        logger.LogInformation("User {UserId} deleted the review of appointment {AppointmentId}", UserId, id);
+
+        TempData["Success"] = "The review has been deleted.";
+        return BackTo(returnUrl, id);
     }
 
     [HttpPost, Authorize(Roles = Roles.Client), ValidateAntiForgeryToken]
@@ -155,7 +224,8 @@ public class AppointmentsController(ApplicationDbContext db, UserManager<Applica
         await db.SaveChangesAsync();
         var me = await MyNameAsync();
         await NotifyClientAsync(appointment, NotificationType.AppointmentCompleted, "Appointment completed",
-            whose => $"{me} marked {whose} appointment on {When(appointment)} as completed.");
+            whose => $"{me} marked {whose} appointment on {When(appointment)} as completed."
+                + (whose == "your" ? " Open it to leave a rating and feedback." : ""));
 
         TempData["Success"] = "Marked as completed.";
         return BackTo(returnUrl, id);

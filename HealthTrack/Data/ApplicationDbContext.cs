@@ -18,7 +18,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         (typeof(Appointment), "Appointments", nameof(Appointment.TrainerNote)),
         (typeof(ProgressFeedback), "ProgressFeedback", nameof(Models.ProgressFeedback.Message)),
         (typeof(Notification), "Notifications", nameof(Notification.Message)),
-        (typeof(ClientProfile), "ClientProfiles", nameof(ClientProfile.HealthConditions))
+        (typeof(ClientProfile), "ClientProfiles", nameof(ClientProfile.HealthConditions)),
+        (typeof(AppointmentReview), "AppointmentReviews", nameof(AppointmentReview.Comment))
     ];
 
     public DbSet<WorkoutPlan> WorkoutPlans => Set<WorkoutPlan>();
@@ -35,6 +36,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<TrainerProfile> TrainerProfiles => Set<TrainerProfile>();
     public DbSet<TrainerQualification> TrainerQualifications => Set<TrainerQualification>();
     public DbSet<ProfessionalProfile> ProfessionalProfiles => Set<ProfessionalProfile>();
+    public DbSet<ProfilePhoto> ProfilePhotos => Set<ProfilePhoto>();
+    public DbSet<AppointmentReview> AppointmentReviews => Set<AppointmentReview>();
 
     public IQueryable<ApplicationUser> UsersInRole(string role) =>
         Users.Where(u => UserRoles.Any(ur => ur.UserId == u.Id && Roles.Any(r => r.Id == ur.RoleId && r.Name == role)));
@@ -48,6 +51,15 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany()
             .HasForeignKey(u => u.TrainerId)
             .OnDelete(DeleteBehavior.NoAction);
+
+        builder.Entity<ApplicationUser>()
+            .HasOne(u => u.Professional)
+            .WithMany()
+            .HasForeignKey(u => u.ProfessionalId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        builder.Entity<ProfilePhoto>().HasOne(p => p.User).WithOne()
+            .HasForeignKey<ProfilePhoto>(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
 
         builder.Entity<ApplicationUser>(u =>
         {
@@ -115,6 +127,16 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             a.HasIndex(x => new { x.TrainerId, x.StartsAt });
             a.HasIndex(x => new { x.ClientId, x.StartsAt });
             a.Ignore(x => x.DurationMinutes);
+        });
+
+        // Reviews go with their appointment; one review per appointment.
+        builder.Entity<AppointmentReview>(r =>
+        {
+            r.ToTable(t => t.HasCheckConstraint("CK_AppointmentReviews_Rating", "[Rating] BETWEEN 1 AND 5"));
+            r.HasOne(x => x.Appointment).WithOne().HasForeignKey<AppointmentReview>(x => x.AppointmentId).OnDelete(DeleteBehavior.Cascade);
+            r.HasOne(x => x.Client).WithMany().HasForeignKey(x => x.ClientId).OnDelete(DeleteBehavior.NoAction);
+            r.HasOne(x => x.Provider).WithMany().HasForeignKey(x => x.ProviderId).OnDelete(DeleteBehavior.NoAction);
+            r.HasIndex(x => new { x.ProviderId, x.CreatedAt });
         });
 
         builder.Entity<ProgressFeedback>(f =>

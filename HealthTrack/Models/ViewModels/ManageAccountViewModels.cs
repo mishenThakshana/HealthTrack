@@ -56,6 +56,8 @@ public class ManageAccountViewModel
     public string RoleKey { get; init; } = string.Empty;
     public string Role { get; init; } = string.Empty;
     public string? TrainerName { get; init; }
+    public string? ProfessionalName { get; init; }
+    public required Avatar Avatar { get; init; }
     public DateTime MemberSince { get; init; }
     public DateTime? LastLoginAt { get; init; }
 }

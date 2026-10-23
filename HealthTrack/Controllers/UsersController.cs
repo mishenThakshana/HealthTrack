@@ -37,7 +37,7 @@ public class UsersController(
                 (from ur in db.UserRoles join r in db.Roles on ur.RoleId equals r.Id where ur.UserId == u.Id select r.Name)
                     .FirstOrDefault() ?? "None",
                 u.Trainer != null ? u.Trainer.FullName : null,
-                u.CreatedAt, u.LastLoginAt, u.LockoutEnd))
+                u.CreatedAt, u.LastLoginAt, u.LockoutEnd, u.PhotoUpdatedAt))
             .ToListAsync();
 
         return View(new UsersIndexViewModel { Query = q, Role = role, Users = rows, Total = await db.Users.CountAsync() });
@@ -123,7 +123,7 @@ public class UsersController(
         user.DateOfBirth = form.DateOfBirth;
         user.Gender = form.Gender;
         if (form.Role != Roles.Client)
-            user.TrainerId = null;
+            (user.TrainerId, user.ProfessionalId) = (null, null);
 
         var result = await userManager.UpdateAsync(user);
         if (!result.Succeeded)
@@ -138,6 +138,8 @@ public class UsersController(
                 await userManager.RemoveFromRoleAsync(user, currentRole);
             await userManager.AddToRoleAsync(user, form.Role);
             await RoleProfiles.RemoveOtherRolesAsync(db, user.Id, form.Role);
+            // Clients who chose this person as their health professional lose that link (trainers are blocked until reassigned).
+            await db.Users.Where(u => u.ProfessionalId == user.Id).ExecuteUpdateAsync(u => u.SetProperty(x => x.ProfessionalId, (string?)null));
             await userManager.UpdateSecurityStampAsync(user);
             logger.LogInformation("Admin {AdminId} changed {UserId} from {OldRole} to {NewRole}", UserId, user.Id, currentRole, form.Role);
         }
