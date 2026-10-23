@@ -2,6 +2,16 @@
 
 A log of every task completed on HealthTrack, newest first.
 
+## 2026-10-23 — Admin dashboard "Locked" tile icon
+
+Commit: not committed yet
+
+### Changed
+- **Admin dashboard, Locked tile:** the icon is now `bi-person-lock` instead of `bi-lock`. The plain padlock is a tall, narrow outline that looked stretched next to the wider people icons on the other tiles. The new icon is a person with a small lock, the same style as the Active tile's person with a check mark.
+
+### Verified
+- Ran on port 5299, signed in as admin and took a screenshot of the tile row at 1400px wide. The new icon sits evenly in its badge like the others.
+
 ## 2026-10-23 — "My profile" card removed from the trainer dashboard
 
 Commit: not committed yet
