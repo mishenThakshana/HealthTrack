@@ -3,7 +3,7 @@
 @using HealthTrack.Helpers
 @{
     ViewData["Title"] = "Users";
-    var roles = Roles.All.Select(r => new SelectListItem(Roles.DisplayName(r), r, r == Model.Role));
+    var roles = Roles.All.Select(r => new SelectListItem(r, r, r == Model.Role));
 }
 
 <div class="container py-4">
@@ -64,7 +64,7 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td><span class="badge rounded-pill bg-primary-subtle text-primary">@Roles.DisplayName(u.Role)</span></td>
+                                <td><span class="badge rounded-pill bg-primary-subtle text-primary">@u.Role</span></td>
                                 <td class="small d-none d-lg-table-cell">@(u.Role == Roles.Client ? u.TrainerName ?? "Unassigned" : "—")</td>
                                 <td class="text-end text-nowrap small d-none d-md-table-cell">@u.CreatedAt.ToLocalTime().ToString("d MMM yyyy")</td>
                                 <td class="text-end text-nowrap small d-none d-sm-table-cell">@(u.LastLoginAt?.ToLocalTime().ToString("d MMM, HH:mm") ?? "Never")</td>

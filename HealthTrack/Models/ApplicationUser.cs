@@ -26,14 +26,9 @@ public class ApplicationUser : IdentityUser
     public string? TrainerId { get; set; }
     public ApplicationUser? Trainer { get; set; }
 
-    // The health professional a client chose to share their progress with.
-    public string? ProfessionalId { get; set; }
-    public ApplicationUser? Professional { get; set; }
-
     // When the profile picture last changed; null when the user has none. Also used to refresh cached copies.
     public DateTime? PhotoUpdatedAt { get; set; }
 
     public ClientProfile? ClientProfile { get; set; }
     public TrainerProfile? TrainerProfile { get; set; }
-    public ProfessionalProfile? ProfessionalProfile { get; set; }
 }

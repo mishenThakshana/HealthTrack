@@ -14,7 +14,11 @@
 
     <div class="row g-3">
         <div class="col-lg-4">
-            <div class="ht-panel">
+            @if (Model.Plan.WorkoutPlan is not null)
+            {
+                <partial name="_TodaysWorkout" model="Model.Plan" />
+            }
+            <div class="ht-panel mb-3">
                 <div class="ht-panel-header">
                     <h2 class="h6 mb-0"><i class="bi @(Model.EditingId is null ? "bi-plus-circle" : "bi-pencil")"></i> @(Model.EditingId is null ? "Log a workout" : "Edit workout")</h2>
                 </div>
@@ -49,6 +53,10 @@
                     <partial name="_TrackingSubmit" model="Model.EditingId" view-data='new ViewDataDictionary(ViewData) { ["Save"] = "Save workout" }' />
                 </form>
             </div>
+            @if (Model.Plan.WorkoutPlan is not null || Model.Plan.NextWorkoutPlan is not null)
+            {
+                <partial name="_UpcomingWorkouts" model="Model.Plan" />
+            }
         </div>
 
         <div class="col-lg-8">

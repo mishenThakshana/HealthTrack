@@ -58,7 +58,7 @@
                         {
                             <li class="nav-item">
                                 <a class="nav-link @NavActive("Providers")" asp-controller="Providers" asp-action="Index">
-                                    <i class="bi bi-search-heart"></i> Find experts
+                                    <i class="bi bi-search-heart"></i> Find a trainer
                                 </a>
                             </li>
                         }
@@ -82,7 +82,7 @@
                                 </ul>
                             </li>
                         }
-                        @if (User.IsInRole(Roles.Trainer) || User.IsInRole(Roles.Professional) || User.IsInRole(Roles.Client) || User.IsInRole(Roles.Admin))
+                        @if (User.IsInRole(Roles.Trainer) || User.IsInRole(Roles.Client) || User.IsInRole(Roles.Admin))
                         {
                             <li class="nav-item">
                                 <a class="nav-link @NavActive("Appointments")" asp-controller="Appointments" asp-action="Index">
@@ -165,20 +165,13 @@
                 </div>
             </div>
         }
-        @if (currentUser is { TrainerId: null } or { ProfessionalId: null } && User.IsInRole(Roles.Client) && NavActive("Providers") == string.Empty)
+        @if (currentUser is { TrainerId: null } && User.IsInRole(Roles.Client) && NavActive("Providers") == string.Empty)
         {
-            var missing = (currentUser.TrainerId, currentUser.ProfessionalId) switch
-            {
-                (null, null) => "a trainer or health professional",
-                (null, _) => "a trainer",
-                _ => "a health professional"
-            };
             <div class="container mt-3">
                 <div class="ht-note d-flex flex-wrap align-items-center gap-2 small">
                     <i class="bi bi-person-plus text-primary"></i>
-                    <span class="flex-grow-1">You haven't chosen @missing yet. Choose one so they can plan with you and follow your progress.</span>
-                    <a class="btn btn-sm btn-outline-primary" asp-controller="Providers" asp-action="Index"
-                       asp-route-show="@(currentUser.TrainerId is null ? null : "professionals")">Find experts</a>
+                    <span class="flex-grow-1">You haven't chosen a trainer yet. Choose one so they can plan with you and follow your progress.</span>
+                    <a class="btn btn-sm btn-outline-primary" asp-controller="Providers" asp-action="Index">Find a trainer</a>
                 </div>
             </div>
         }

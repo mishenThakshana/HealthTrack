@@ -24,7 +24,7 @@
                 @if (Model.TrainerName is not null) { <span> · trainer @Model.TrainerName</span> }
             </p>
         </div>
-        @if (Model.Form.Role is Roles.Trainer or Roles.Professional)
+        @if (Model.Form.Role == Roles.Trainer)
         {
             <a class="btn btn-outline-primary btn-sm" asp-controller="Providers" asp-action="Details" asp-route-id="@Model.Id"><i class="bi bi-star"></i> Profile &amp; reviews</a>
         }
@@ -67,7 +67,7 @@
                 </form>
             </div>
 
-            @if (Model.Form.Role is Roles.Trainer or Roles.Professional)
+            @if (Model.Form.Role == Roles.Trainer)
             {
                 <div class="ht-panel mb-3">
                     <div class="ht-panel-header">

@@ -16,6 +16,10 @@
 
     <div class="row g-3">
         <div class="col-lg-4">
+            @if (Model.Plan.DietPlan is not null || Model.Plan.NextDietPlan is not null)
+            {
+                <partial name="_TodaysMeals" model="Model.Plan" />
+            }
             <div class="ht-panel">
                 <div class="ht-panel-header">
                     <h2 class="h6 mb-0"><i class="bi @(Model.EditingId is null ? "bi-plus-circle" : "bi-pencil")"></i> @(Model.EditingId is null ? "Log a meal" : "Edit meal")</h2>

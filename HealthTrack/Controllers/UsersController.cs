@@ -74,7 +74,7 @@ public class UsersController(
         await userManager.AddToRoleAsync(user, form.Role);
         logger.LogInformation("Admin {AdminId} created {Role} account {UserId}", UserId, form.Role, user.Id);
 
-        TempData["Success"] = $"Created {Roles.DisplayName(form.Role).ToLowerInvariant()} account for {user.FullName}.";
+        TempData["Success"] = $"Created {form.Role.ToLowerInvariant()} account for {user.FullName}.";
         return RedirectToAction(nameof(Edit), new { id = user.Id });
     }
 
@@ -123,7 +123,7 @@ public class UsersController(
         user.DateOfBirth = form.DateOfBirth;
         user.Gender = form.Gender;
         if (form.Role != Roles.Client)
-            (user.TrainerId, user.ProfessionalId) = (null, null);
+            user.TrainerId = null;
 
         var result = await userManager.UpdateAsync(user);
         if (!result.Succeeded)
@@ -138,8 +138,6 @@ public class UsersController(
                 await userManager.RemoveFromRoleAsync(user, currentRole);
             await userManager.AddToRoleAsync(user, form.Role);
             await RoleProfiles.RemoveOtherRolesAsync(db, user.Id, form.Role);
-            // Clients who chose this person as their health professional lose that link (trainers are blocked until reassigned).
-            await db.Users.Where(u => u.ProfessionalId == user.Id).ExecuteUpdateAsync(u => u.SetProperty(x => x.ProfessionalId, (string?)null));
             await userManager.UpdateSecurityStampAsync(user);
             logger.LogInformation("Admin {AdminId} changed {UserId} from {OldRole} to {NewRole}", UserId, user.Id, currentRole, form.Role);
         }
@@ -256,11 +254,10 @@ public class UsersController(
         }
     }
 
-    // Admins can check a trainer's or professional's details. Client health details stay private.
+    // Admins can check a trainer's details. Client health details stay private.
     private async Task<List<(string Label, string Value)>> RoleDetailsAsync(ApplicationUser user)
     {
         await db.Entry(user).Reference(u => u.TrainerProfile).Query().Include(p => p.Qualifications).LoadAsync();
-        await db.Entry(user).Reference(u => u.ProfessionalProfile).LoadAsync();
         return ProfileOptions.Details(user);
     }
 

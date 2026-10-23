@@ -13,7 +13,6 @@ public class AdminDashboardViewModel
     public int TotalUsers { get; init; }
     public int Clients { get; init; }
     public int Trainers { get; init; }
-    public int Professionals { get; init; }
     public int ActiveThisWeek { get; init; }
     public int NewThisWeek { get; init; }
     public int LockedOut { get; init; }
@@ -34,7 +33,7 @@ public class MemberDashboardViewModel
     public DateTime MemberSince { get; init; }
     public IReadOnlyList<(string Label, string Value)> Details { get; init; } = [];
     public bool DetailsMissing { get; init; }
-    // Trainers and professionals only: their reviews from clients.
+    // Trainers only: their reviews from clients.
     public RatingSummary? Rating { get; init; }
 
     public string FirstName =>
@@ -51,14 +50,10 @@ public class ClientDashboardViewModel
     public int WorkoutsThisWeek { get; init; }
     public int MinutesThisWeek { get; init; }
     public int CaloriesToday { get; init; }
-    public WorkoutPlan? WorkoutPlan { get; init; }
-    public DietPlan? DietPlan { get; init; }
+    public PlanScheduleViewModel Plan { get; init; } = new();
     public IReadOnlyList<WorkoutLog> RecentWorkouts { get; init; } = [];
     public IReadOnlyList<Appointment> UpcomingAppointments { get; init; } = [];
     public IReadOnlyList<FeedbackItem> LatestFeedback { get; init; } = [];
-
-    public IEnumerable<WorkoutExercise> TodaysExercises =>
-        WorkoutPlan?.Exercises.Where(e => e.Day is null || e.Day == DateTime.Today.DayOfWeek) ?? [];
 }
 
 public class TrainerDashboardViewModel
@@ -70,20 +65,5 @@ public class TrainerDashboardViewModel
     public IReadOnlyList<Appointment> TodaysAppointments { get; init; } = [];
     public IReadOnlyList<Appointment> AppointmentRequests { get; init; } = [];
 }
-
-public class ProfessionalDashboardViewModel
-{
-    public required MemberDashboardViewModel Profile { get; init; }
-    public IReadOnlyList<Appointment> TodaysAppointments { get; init; } = [];
-    public IReadOnlyList<Appointment> AppointmentRequests { get; init; } = [];
-    public IReadOnlyList<Appointment> Upcoming { get; init; } = [];
-    public int PendingCount { get; init; }
-    public int CompletedThisMonth { get; init; }
-    public int ClientsSeen { get; init; }
-    public IReadOnlyList<ChosenByClient> ChosenBy { get; init; } = [];
-}
-
-// A client who chose this health professional.
-public record ChosenByClient(Avatar Avatar, string Email, int? Age);
 
 public record DeleteButton(string Controller, string Action, Dictionary<string, string> RouteValues, string Confirm, string? Label = null);

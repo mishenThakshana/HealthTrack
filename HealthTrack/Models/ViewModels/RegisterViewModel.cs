@@ -33,7 +33,6 @@ public class RegisterViewModel
     public DateOnly? DateOfBirth { get; set; }
 
     public TrainerProfileFormViewModel Trainer { get; set; } = new();
-    public ProfessionalProfileFormViewModel Professional { get; set; } = new();
 
     [Required(ErrorMessage = "Please select your gender.")]
     [StringLength(20)]

@@ -18,20 +18,15 @@
             <h1 class="h3 mb-1">Reports</h1>
             <p class="text-muted mb-0">
                 @(Model.IsAdmin ? "Client performance, popular routines and engagement across HealthTrack." : "Performance and engagement of your clients.")
-                @Periods.Label(Model.Days).
+                @Model.Range.Label.
             </p>
         </div>
-        <div class="d-flex flex-wrap gap-2 align-items-center">
-            <div class="btn-group btn-group-sm ht-range" role="group" aria-label="Time range">
-                @foreach (var range in Periods.Ranges)
-                {
-                    <a class="btn @(range == Model.Days ? "btn-primary" : "btn-outline-primary")" asp-action="Index" asp-route-days="@range"
-                       aria-current="@(range == Model.Days ? "true" : null)">@(range switch { 365 => "12 months", 180 => "6 months", _ => $"{range} days" })</a>
-                }
-            </div>
-            <a class="btn btn-outline-primary btn-sm" asp-action="Export" asp-route-days="@Model.Days"><i class="bi bi-download"></i> CSV</a>
-        </div>
+        <partial name="_RangePicker" model="new RangePicker(Model.Range)" />
     </div>
+    @if (Model.RangeError is not null)
+    {
+        <div class="alert alert-warning small py-2" role="alert"><i class="bi bi-exclamation-triangle"></i> @Model.RangeError Showing @Periods.Label(Model.Days).ToLowerInvariant() instead.</div>
+    }
 
     <div class="row g-3 mb-4">
         <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-people", "Active clients", $"{Model.ActiveClients} / {Model.TotalClients}", "Logged anything in this period")' /></div>
@@ -78,7 +73,7 @@
                                     }
                                     else
                                     {
-                                        <a class="fw-semibold" asp-controller="Progress" asp-action="Index" asp-route-id="@c.Id" asp-route-days="@(Model.Days < 90 ? 90 : Model.Days)">@c.FullName</a>
+                                        <a class="fw-semibold" asp-controller="Progress" asp-action="Index" asp-route-id="@c.Id" asp-route-days="@(Model.Range.IsCustom ? null : Math.Max(Model.Days, 90))" asp-route-from="@Model.Range.RouteFrom" asp-route-to="@Model.Range.RouteTo">@c.FullName</a>
                                     }
                                     <div class="small text-muted text-break">@c.Email</div>
                                 </td>

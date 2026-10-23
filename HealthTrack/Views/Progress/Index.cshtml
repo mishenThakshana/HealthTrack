@@ -4,7 +4,6 @@
     var client = Model.Client;
     ViewData["Title"] = Model.IsOwn ? "My progress" : $"{client.FullName}'s progress";
     var routeId = Model.IsOwn ? null : client.Id;
-    var isTrainer = User.IsInRole(HealthTrack.Data.Roles.Trainer);
     var chart = (string empty) => new ViewDataDictionary(ViewData) { ["Empty"] = empty };
 }
 
@@ -13,16 +12,8 @@
     {
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb small">
-                @if (isTrainer)
-                {
-                    <li class="breadcrumb-item"><a asp-controller="Clients" asp-action="Index">My clients</a></li>
-                    <li class="breadcrumb-item"><a asp-controller="Clients" asp-action="Details" asp-route-id="@client.Id">@client.FullName</a></li>
-                }
-                else
-                {
-                    <li class="breadcrumb-item"><a asp-controller="Appointments" asp-action="Index">Appointments</a></li>
-                    <li class="breadcrumb-item">@client.FullName</li>
-                }
+                <li class="breadcrumb-item"><a asp-controller="Clients" asp-action="Index">My clients</a></li>
+                <li class="breadcrumb-item"><a asp-controller="Clients" asp-action="Details" asp-route-id="@client.Id">@client.FullName</a></li>
                 <li class="breadcrumb-item active" aria-current="page">Progress</li>
             </ol>
         </nav>
@@ -32,17 +23,15 @@
         <div>
             <h1 class="h3 mb-1">@ViewData["Title"]</h1>
             <p class="text-muted mb-0">
-                @Periods.Label(Model.Days) · active on @Model.ActiveDays of @Model.Days days
+                @Model.Range.Label · active on @Model.ActiveDays of @Model.Days days
             </p>
         </div>
-        <div class="btn-group btn-group-sm ht-range" role="group" aria-label="Time range">
-            @foreach (var range in Periods.Ranges)
-            {
-                <a class="btn @(range == Model.Days ? "btn-primary" : "btn-outline-primary")" asp-action="Index" asp-route-id="@routeId" asp-route-days="@range"
-                   aria-current="@(range == Model.Days ? "true" : null)">@(range switch { 365 => "12 months", 180 => "6 months", _ => $"{range} days" })</a>
-            }
-        </div>
+        <partial name="_RangePicker" model="new RangePicker(Model.Range, routeId)" />
     </div>
+    @if (Model.RangeError is not null)
+    {
+        <div class="alert alert-warning small py-2" role="alert"><i class="bi bi-exclamation-triangle"></i> @Model.RangeError Showing @Periods.Label(Model.Days).ToLowerInvariant() instead.</div>
+    }
 
     @if (!Model.IsOwn)
     {
@@ -141,13 +130,13 @@
 
     <div class="ht-panel" id="feedback">
         <div class="ht-panel-header">
-            <h2 class="h6 mb-0"><i class="bi bi-chat-left-text"></i> @(Model.IsOwn ? "Feedback from your trainer and health professionals" : "Feedback")</h2>
+            <h2 class="h6 mb-0"><i class="bi bi-chat-left-text"></i> @(Model.IsOwn ? "Feedback from your trainer" : "Feedback")</h2>
         </div>
         <div class="row g-4">
             @if (Model.CanGiveFeedback)
             {
                 <div class="col-lg-5">
-                    <form asp-action="AddFeedback" asp-route-id="@client.Id" asp-route-days="@Model.Days" asp-fragment="feedback" method="post" novalidate>
+                    <form asp-action="AddFeedback" asp-route-id="@client.Id" asp-route-days="@Model.Range.RouteDays" asp-route-from="@Model.Range.RouteFrom" asp-route-to="@Model.Range.RouteTo" asp-fragment="feedback" method="post" novalidate>
                         <label asp-for="FeedbackForm.Message" class="form-label"></label>
                         <textarea asp-for="FeedbackForm.Message" class="form-control mb-1" rows="4" placeholder="e.g. Great consistency this month — try adding one more cardio session per week."></textarea>
                         <span asp-validation-for="FeedbackForm.Message" class="text-danger small d-block"></span>
@@ -174,7 +163,7 @@
                                 </div>
                                 @if (f.AuthorId == Model.CurrentUserId)
                                 {
-                                    <partial name="_DeleteButton" model='new DeleteButton("Progress", "DeleteFeedback", new() { ["feedbackId"] = f.Id.ToString(), ["days"] = Model.Days.ToString() }, "Delete this feedback?")' />
+                                    <partial name="_DeleteButton" model='new DeleteButton("Progress", "DeleteFeedback", new() { ["feedbackId"] = f.Id.ToString(), ["days"] = Model.Range.RouteDays?.ToString() ?? "", ["from"] = Model.Range.RouteFrom ?? "", ["to"] = Model.Range.RouteTo ?? "" }, "Delete this feedback?")' />
                                 }
                             </li>
                         }

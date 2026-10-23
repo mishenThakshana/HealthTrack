@@ -14,7 +14,6 @@ public enum NotificationType
     PlanAssigned,
     FeedbackReceived,
     TrainerAssigned,
-    ProfessionalChosen,
     ClientLeft,
     ReviewReceived
 }

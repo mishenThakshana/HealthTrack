@@ -1,0 +1,30 @@
+@using HealthTrack.Helpers
+@model RangePicker
+@{
+    var range = Model.Range;
+    var today = Dates.Today.ToString("yyyy-MM-dd");
+}
+
+<div class="d-flex flex-wrap gap-2 align-items-center">
+    <div class="btn-group btn-group-sm ht-range" role="group" aria-label="Time range">
+        @foreach (var days in Periods.Ranges)
+        {
+            var selected = !range.IsCustom && days == range.Days;
+            <a class="btn @(selected ? "btn-primary" : "btn-outline-primary")" asp-action="Index" asp-route-id="@Model.RouteId" asp-route-days="@days"
+               aria-current="@(selected ? "true" : null)">@(days switch { 365 => "12 months", 180 => "6 months", _ => $"{days} days" })</a>
+        }
+    </div>
+    <form asp-action="Index" method="get" class="d-flex flex-wrap gap-1 align-items-center ht-range-custom" aria-label="Custom date range">
+        @if (Model.RouteId is not null) { <input type="hidden" name="id" value="@Model.RouteId" /> }
+        <input type="date" name="from" class="form-control form-control-sm" value="@range.From.ToString("yyyy-MM-dd")" max="@today" aria-label="From" required />
+        <span class="small text-muted">to</span>
+        <input type="date" name="to" class="form-control form-control-sm" value="@range.To.ToString("yyyy-MM-dd")" max="@today" aria-label="To" required />
+        <button type="submit" class="btn btn-sm @(range.IsCustom ? "btn-primary" : "btn-outline-primary")">Apply</button>
+    </form>
+    <div class="btn-group btn-group-sm" role="group" aria-label="Export this period">
+        <a class="btn btn-outline-primary" asp-action="Export" asp-route-id="@Model.RouteId" asp-route-days="@range.RouteDays"
+           asp-route-from="@range.RouteFrom" asp-route-to="@range.RouteTo" asp-route-format="xlsx"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+        <a class="btn btn-outline-primary" asp-action="Export" asp-route-id="@Model.RouteId" asp-route-days="@range.RouteDays"
+           asp-route-from="@range.RouteFrom" asp-route-to="@range.RouteTo" asp-route-format="pdf"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+    </div>
+</div>

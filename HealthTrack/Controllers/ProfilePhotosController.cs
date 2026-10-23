@@ -69,17 +69,17 @@ public class ProfilePhotosController(
         return RedirectToAction("Manage", "Account");
     }
 
-    // Trainers' and professionals' pictures are visible to everyone signed in, so clients can browse them.
-    // A client's picture is only shown to themselves, admins, and the trainers or professionals who work with them.
+    // Trainers' pictures are visible to everyone signed in, so clients can browse them.
+    // A client's picture is only shown to themselves, admins, and the trainers who work with them.
     private async Task<bool> CanSeeAsync(string id)
     {
         if (id == UserId || User.IsInRole(Roles.Admin))
             return true;
 
-        if (await db.UsersInRole(Roles.Trainer).AnyAsync(u => u.Id == id) || await db.UsersInRole(Roles.Professional).AnyAsync(u => u.Id == id))
+        if (await db.UsersInRole(Roles.Trainer).AnyAsync(u => u.Id == id))
             return true;
 
-        return await db.Users.AnyAsync(u => u.Id == id && (u.TrainerId == UserId || u.ProfessionalId == UserId))
+        return await db.Users.AnyAsync(u => u.Id == id && u.TrainerId == UserId)
             || await db.Appointments.AnyAsync(a => a.ClientId == id && a.TrainerId == UserId);
     }
 

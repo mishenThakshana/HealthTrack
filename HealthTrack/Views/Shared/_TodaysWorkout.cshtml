@@ -1,0 +1,65 @@
+@using HealthTrack.Controllers
+@model PlanScheduleViewModel
+@{
+    var returnUrl = ViewData["ReturnUrl"] as string;
+}
+
+<div class="ht-panel mb-3">
+    <div class="ht-panel-header">
+        <h2 class="h6 mb-0"><i class="bi bi-activity"></i> Today's workout</h2>
+        @if (Model.WorkoutPlan is not null)
+        {
+            <a class="small" asp-controller="WorkoutPlans" asp-action="Details" asp-route-id="@Model.WorkoutPlan.Id">@Model.WorkoutPlan.Title <i class="bi bi-chevron-right"></i></a>
+        }
+    </div>
+    @if (Model.WorkoutPlan is null)
+    {
+        <partial name="_EmptyState" model='new EmptyState("bi-clipboard", "Your trainer hasn’t assigned a workout plan yet.")' />
+    }
+    else if (Model.Exercises.Count == 0)
+    {
+        <partial name="_EmptyState" model='new EmptyState("bi-cup-hot", "Rest day — nothing scheduled for today.")' />
+    }
+    else
+    {
+        <ul class="list-unstyled ht-item-list mb-0">
+            @foreach (var (exercise, logged) in Model.Exercises)
+            {
+                var setsAndReps = PlanSchedule.SetsAndReps(exercise);
+                <li>
+                    <div class="flex-grow-1 ht-min-w-0">
+                        <div class="fw-semibold">@exercise.Name</div>
+                        <div class="small text-muted d-flex flex-wrap gap-3">
+                            @if (setsAndReps is not null) { <span><i class="bi bi-arrow-repeat"></i> @setsAndReps</span> }
+                            @if (exercise.DurationMinutes is not null) { <span><i class="bi bi-stopwatch"></i> @exercise.DurationMinutes min</span> }
+                            @if (exercise.Day is null) { <span>Every day</span> }
+                        </div>
+                    </div>
+                    @if (logged)
+                    {
+                        <span class="badge rounded-pill bg-success-subtle text-success"><i class="bi bi-check2"></i> Logged</span>
+                    }
+                    else if (exercise.DurationMinutes is null)
+                    {
+                        <a class="btn btn-sm btn-outline-primary text-nowrap" asp-controller="WorkoutLogs" asp-action="Index" asp-route-exercise="@exercise.Id"
+                           title="Add the minutes you spent, then save">
+                            <i class="bi bi-plus-lg"></i> Log…
+                        </a>
+                    }
+                    else
+                    {
+                        <a class="btn btn-sm btn-link p-0 ht-icon-btn" asp-controller="WorkoutLogs" asp-action="Index" asp-route-exercise="@exercise.Id"
+                           title="Adjust before logging" aria-label="Adjust @exercise.Name before logging"><i class="bi bi-pencil"></i></a>
+                        <form asp-controller="WorkoutLogs" asp-action="LogPlanned" method="post" class="d-inline">
+                            <input type="hidden" name="exerciseId" value="@exercise.Id" />
+                            <input type="hidden" name="returnUrl" value="@returnUrl" />
+                            <button type="submit" class="btn btn-sm btn-primary text-nowrap" aria-label="Log @exercise.Name as done today">
+                                <i class="bi bi-check-lg"></i> Log
+                            </button>
+                        </form>
+                    }
+                </li>
+            }
+        </ul>
+    }
+</div>

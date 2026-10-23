@@ -731,6 +731,10 @@ main .ht-avatar {
   white-space: nowrap;
 }
 
+.ht-range-custom .form-control {
+  width: auto;
+}
+
 .ht-item-list > li.ht-editing,
 .ht-table tr.ht-editing td {
   background-color: var(--ht-orange-light);

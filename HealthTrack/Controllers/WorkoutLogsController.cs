@@ -1,4 +1,5 @@
 using HealthTrack.Data;
+using HealthTrack.Helpers;
 using HealthTrack.Models;
 using HealthTrack.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -13,8 +14,17 @@ public class WorkoutLogsController(ApplicationDbContext db, UserManager<Applicat
 {
     private string UserId => userManager.GetUserId(User)!;
 
-    public async Task<IActionResult> Index(int? edit)
+    public async Task<IActionResult> Index(int? edit, int? exercise)
     {
+        if (exercise is not null)
+        {
+            var planned = await FindPlannedAsync(exercise.Value);
+            if (planned is null)
+                return NotFound();
+
+            return View(await BuildPageAsync(PlanSchedule.LogFormFor(planned.Exercise)));
+        }
+
         if (edit is null)
             return View(await BuildPageAsync(new WorkoutLogFormViewModel()));
 
@@ -55,6 +65,38 @@ public class WorkoutLogsController(ApplicationDbContext db, UserManager<Applicat
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> LogPlanned(int exerciseId, string? returnUrl)
+    {
+        var planned = await FindPlannedAsync(exerciseId);
+        if (planned is null)
+            return NotFound();
+
+        var exercise = planned.Exercise;
+        if (exercise.DurationMinutes is null)
+            return RedirectToAction(nameof(Index), new { exercise = exercise.Id });
+
+        if (planned.Logged)
+        {
+            TempData["Success"] = $"{exercise.Name} is already logged for today.";
+        }
+        else
+        {
+            db.WorkoutLogs.Add(new WorkoutLog
+            {
+                ClientId = UserId,
+                Date = Dates.Today,
+                Activity = exercise.Name,
+                DurationMinutes = exercise.DurationMinutes.Value,
+                Notes = PlanSchedule.SetsAndReps(exercise)
+            });
+            await db.SaveChangesAsync();
+            TempData["Success"] = $"Logged {exercise.Name}.";
+        }
+
+        return Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(int id, [Bind(Prefix = "Form")] WorkoutLogFormViewModel form)
     {
         var log = await FindAsync(id);
@@ -92,12 +134,16 @@ public class WorkoutLogsController(ApplicationDbContext db, UserManager<Applicat
 
     private Task<WorkoutLog?> FindAsync(int id) => db.WorkoutLogs.FirstOrDefaultAsync(l => l.Id == id && l.ClientId == UserId);
 
+    private async Task<PlannedExercise?> FindPlannedAsync(int exerciseId) =>
+        (await PlanSchedule.ForClientAsync(db, UserId)).Exercises.FirstOrDefault(p => p.Exercise.Id == exerciseId);
+
     private async Task<TrackingPageViewModel<WorkoutLogFormViewModel, WorkoutLog>> BuildPageAsync(WorkoutLogFormViewModel form, int? editingId = null) => new()
     {
         Form = form,
         EditingId = editingId,
         Entries = await db.WorkoutLogs.Where(l => l.ClientId == UserId)
             .OrderByDescending(l => l.Date).ThenByDescending(l => l.Id)
-            .Take(TrackingRules.PageSize).ToListAsync()
+            .Take(TrackingRules.PageSize).ToListAsync(),
+        Plan = await PlanSchedule.ForClientAsync(db, UserId)
     };
 }

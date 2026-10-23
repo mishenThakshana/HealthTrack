@@ -9,7 +9,7 @@
         <div>
             <h1 class="h3 mb-1">Appointments</h1>
             <p class="text-muted mb-0">
-                @(Model.IsAdmin ? "Review and manage every client's appointments with trainers and health professionals."
+                @(Model.IsAdmin ? "Review and manage every client's appointments with trainers."
                     : Model.IsProvider ? "Review consultation requests and manage your schedule." : "Book a consultation and keep track of your sessions.")
             </p>
         </div>
@@ -25,7 +25,7 @@
                     </div>
                     @if (!Model.Trainers.Any())
                     {
-                        <partial name="_EmptyState" model='new EmptyState("bi-person-badge", "There are no trainers or health professionals to book with yet.")' />
+                        <partial name="_EmptyState" model='new EmptyState("bi-person-badge", "There are no trainers to book with yet.")' />
                     }
                     else
                     {

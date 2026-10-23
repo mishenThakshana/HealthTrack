@@ -50,13 +50,11 @@ public class ManageAccountViewModel
     public NotificationSettingsViewModel Notifications { get; init; } = new();
     public ClientProfileFormViewModel Client { get; init; } = new();
     public TrainerProfileFormViewModel Trainer { get; init; } = new();
-    public ProfessionalProfileFormViewModel Professional { get; init; } = new();
     public bool EmailConfirmed { get; init; }
     public bool IsClient { get; init; }
     public string RoleKey { get; init; } = string.Empty;
     public string Role { get; init; } = string.Empty;
     public string? TrainerName { get; init; }
-    public string? ProfessionalName { get; init; }
     public required Avatar Avatar { get; init; }
     public DateTime MemberSince { get; init; }
     public DateTime? LastLoginAt { get; init; }

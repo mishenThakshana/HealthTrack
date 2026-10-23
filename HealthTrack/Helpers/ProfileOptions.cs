@@ -10,10 +10,8 @@ public static class ProfileOptions
     public static readonly string[] ActivityLevels = ["Mostly sitting", "Lightly active", "Active", "Very active"];
 
     public static readonly string[] Specializations =
-        ["Weight loss", "Strength and muscle", "Cardio and endurance", "Yoga and mobility", "Sports performance", "Injury recovery", "General fitness"];
-
-    public static readonly string[] Professions =
-        ["General practitioner (doctor)", "Dietitian or nutritionist", "Physiotherapist", "Psychologist or counsellor", "Nurse", "Other health professional"];
+        ["Weight loss", "Strength and muscle", "Cardio and endurance", "Yoga and mobility", "Sports performance", "Injury recovery",
+         "Nutrition and diet", "General fitness"];
 
     public static string Experience(int years) => years switch
     {
@@ -28,15 +26,10 @@ public static class ProfileOptions
         { ClientProfile: { } c } => [("Main goal", c.FitnessGoal), ("Activity", c.ActivityLevel)],
         { TrainerProfile: { } t } => [("Specialization", t.Specialization), ("Experience", Experience(t.YearsOfExperience)),
             ("Qualifications", string.Join(", ", t.Qualifications.OrderBy(q => q.Id).Select(q => q.Name)))],
-        { ProfessionalProfile: { } p } => [("Profession", p.Profession), ("Registration no.", p.RegistrationNumber),
-            .. p.Workplace is null ? Array.Empty<(string, string)>() : [("Workplace", p.Workplace)],
-            ("Experience", Experience(p.YearsOfExperience))],
         _ => []
     };
 
-    // A one-line summary of a trainer or professional, for example in the appointment booking list.
+    // A one-line summary of a trainer, for example in the appointment booking list.
     public static string? Headline(ApplicationUser user) =>
-        user.TrainerProfile is { } t ? $"{t.Specialization} · {Experience(t.YearsOfExperience)}"
-        : user.ProfessionalProfile is { } p ? p.Profession + (p.Workplace is null ? "" : $" · {p.Workplace}")
-        : null;
+        user.TrainerProfile is { } t ? $"{t.Specialization} · {Experience(t.YearsOfExperience)}" : null;
 }

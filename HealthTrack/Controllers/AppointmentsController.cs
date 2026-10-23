@@ -22,10 +22,10 @@ public class AppointmentsController(
     private string UserId => userManager.GetUserId(User)!;
     private bool IsAdmin => User.IsInRole(Roles.Admin);
 
-    // Trainers and professionals manage their own appointments; admins manage everyone's.
-    private bool IsProvider => User.IsInRole(Roles.Trainer) || User.IsInRole(Roles.Professional) || IsAdmin;
+    // Trainers manage their own appointments; admins manage everyone's.
+    private bool IsProvider => User.IsInRole(Roles.Trainer) || IsAdmin;
 
-    // "with" preselects who to book, for example from the Trainers & health professionals page.
+    // "with" preselects who to book, for example from the Find a trainer page.
     public async Task<IActionResult> Index(string? with)
     {
         var form = new AppointmentRequestViewModel();
@@ -327,7 +327,7 @@ public class AppointmentsController(
     private async Task<string> MyNameAsync() =>
         IsAdmin ? "An administrator" : await db.Users.Where(u => u.Id == UserId).Select(u => u.FullName).FirstAsync();
 
-    // Tells the client what changed; when an admin made the change, the trainer or professional is told too.
+    // Tells the client what changed; when an admin made the change, the trainer is told too.
     // message is given "your" for the client and the client's name for the provider.
     private async Task NotifyClientAsync(Appointment a, NotificationType type, string title, Func<string, string> message)
     {
@@ -341,23 +341,13 @@ public class AppointmentsController(
     private static string DetailsLink(Appointment a) => $"/Appointments/Details/{a.Id}";
 
     private IQueryable<ApplicationUser> Providers() =>
-        db.UsersInRole(Roles.Trainer).Concat(db.UsersInRole(Roles.Professional));
+        db.UsersInRole(Roles.Trainer);
 
     private async Task<List<SelectListItem>> ProviderOptionsAsync(string selected)
     {
-        var trainers = new SelectListGroup { Name = "Trainers" };
-        var professionals = new SelectListGroup { Name = "Health professionals" };
-        var options = await db.UsersInRole(Roles.Trainer).OrderBy(u => u.FullName)
+        return await db.UsersInRole(Roles.Trainer).OrderBy(u => u.FullName)
             .Select(u => new SelectListItem(u.TrainerProfile != null ? u.FullName + " — " + u.TrainerProfile.Specialization : u.FullName,
                 u.Id, u.Id == selected)).ToListAsync();
-        options.ForEach(o => o.Group = trainers);
-
-        var others = await db.UsersInRole(Roles.Professional).OrderBy(u => u.FullName)
-            .Select(u => new SelectListItem(u.ProfessionalProfile != null ? u.FullName + " — " + u.ProfessionalProfile.Profession : u.FullName,
-                u.Id, u.Id == selected)).ToListAsync();
-        others.ForEach(o => o.Group = professionals);
-
-        return [.. options, .. others];
     }
 
     private IActionResult BackTo(string? returnUrl, int id) =>
@@ -373,7 +363,6 @@ public class AppointmentsController(
     private Task<Appointment?> LoadAsync(int id) =>
         Mine().Include(a => a.Client)
             .Include(a => a.Trainer).ThenInclude(t => t!.TrainerProfile)
-            .Include(a => a.Trainer).ThenInclude(t => t!.ProfessionalProfile)
             .FirstOrDefaultAsync(a => a.Id == id);
 
     private async Task<AppointmentsPageViewModel> BuildPageAsync(AppointmentRequestViewModel form)

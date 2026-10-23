@@ -8,7 +8,7 @@
 
 @if (user is not null)
 {
-    var role = Roles.All.FirstOrDefault(User.IsInRole) is { } r ? Roles.DisplayName(r) : "Member";
+    var role = Roles.All.FirstOrDefault(User.IsInRole) is { } r ? r : "Member";
 
     <div class="d-flex align-items-center gap-2 ms-auto order-lg-last">
         @await Component.InvokeAsync("NotificationBell")

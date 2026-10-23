@@ -1,5 +1,4 @@
 using System.Text;
-using System.Text.Json;
 using HealthTrack.Data;
 using HealthTrack.Helpers;
 using HealthTrack.Models;
@@ -22,7 +21,7 @@ public class AccountController(
     ApplicationDbContext db,
     ILogger<AccountController> logger) : Controller
 {
-    public static readonly string[] RegisterableRoles = [Roles.Client, Roles.Trainer, Roles.Professional];
+    public static readonly string[] RegisterableRoles = [Roles.Client, Roles.Trainer];
     public static readonly string[] Genders = ["Male", "Female"];
 
     [HttpGet, AllowAnonymous]
@@ -51,7 +50,7 @@ public class AccountController(
             ModelState.AddModelError(nameof(model.DateOfBirth), "Please enter a valid date of birth.");
 
         // Drops the sections for other roles. Clients have no role details section.
-        RoleProfiles.Validate(ModelState, model.Role, new(), model.Trainer, model.Professional);
+        RoleProfiles.Validate(ModelState, model.Role, new(), model.Trainer);
 
         if (!ModelState.IsValid)
             return View(model);
@@ -78,7 +77,7 @@ public class AccountController(
         await userManager.AddToRoleAsync(user, model.Role);
         if (!isClient)
         {
-            await RoleProfiles.ApplyAsync(db, user.Id, model.Role, new(), model.Trainer, model.Professional);
+            await RoleProfiles.ApplyAsync(db, user.Id, model.Role, new(), model.Trainer);
             await db.SaveChangesAsync();
         }
         logger.LogInformation("New {Role} account registered: {UserId}", model.Role, user.Id);
@@ -253,11 +252,10 @@ public class AccountController(
         return View(nameof(Manage), await BuildManageAsync(user, ToProfileForm(user), form));
     }
 
-    [HttpPost, Authorize(Roles = Roles.Client + "," + Roles.Providers), ValidateAntiForgeryToken]
+    [HttpPost, Authorize(Roles = Roles.Client + "," + Roles.Trainer), ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateDetails(
         [Bind(Prefix = RoleProfiles.ClientPrefix)] ClientProfileFormViewModel client,
-        [Bind(Prefix = RoleProfiles.TrainerPrefix)] TrainerProfileFormViewModel trainer,
-        [Bind(Prefix = RoleProfiles.ProfessionalPrefix)] ProfessionalProfileFormViewModel professional)
+        [Bind(Prefix = RoleProfiles.TrainerPrefix)] TrainerProfileFormViewModel trainer)
     {
         var user = await userManager.GetUserAsync(User);
         if (user is null)
@@ -267,13 +265,12 @@ public class AccountController(
         ModelState.Clear();
         TryValidateModel(client, RoleProfiles.ClientPrefix);
         TryValidateModel(trainer, RoleProfiles.TrainerPrefix);
-        TryValidateModel(professional, RoleProfiles.ProfessionalPrefix);
-        RoleProfiles.Validate(ModelState, role, client, trainer, professional);
+        RoleProfiles.Validate(ModelState, role, client, trainer);
 
         if (!ModelState.IsValid)
-            return View(nameof(Manage), await BuildManageAsync(user, ToProfileForm(user), details: (client, trainer, professional)));
+            return View(nameof(Manage), await BuildManageAsync(user, ToProfileForm(user), details: (client, trainer)));
 
-        await RoleProfiles.ApplyAsync(db, user.Id, role, client, trainer, professional);
+        await RoleProfiles.ApplyAsync(db, user.Id, role, client, trainer);
         await db.SaveChangesAsync();
 
         TempData["Success"] = "Your details have been saved.";
@@ -296,75 +293,6 @@ public class AccountController(
 
         TempData["Success"] = "Notification settings saved.";
         return RedirectToAction(nameof(Manage), null, "notifications");
-    }
-
-    [HttpGet, Authorize]
-    public async Task<IActionResult> DownloadData()
-    {
-        var user = await userManager.GetUserAsync(User);
-        if (user is null)
-            return Challenge();
-
-        var id = user.Id;
-        var export = new
-        {
-            ExportedAt = DateTime.UtcNow,
-            Profile = new
-            {
-                user.FullName, user.Email, user.EmailConfirmed, user.DateOfBirth, user.Gender,
-                Role = (await userManager.GetRolesAsync(user)).FirstOrDefault(),
-                Trainer = await db.Users.Where(u => u.Id == user.TrainerId).Select(u => u.FullName).FirstOrDefaultAsync(),
-                HealthProfessional = await db.Users.Where(u => u.Id == user.ProfessionalId).Select(u => u.FullName).FirstOrDefaultAsync(),
-                HasProfilePicture = user.PhotoUpdatedAt is not null,
-                user.CreatedAt, user.LastLoginAt, user.PrivacyAcceptedAt,
-                NotificationSettings = new { user.EmailAppointments, user.EmailReminders, user.EmailUpdates, user.RemindWorkouts, user.RemindMeals }
-            },
-            HealthDetails = await db.ClientProfiles.Where(p => p.UserId == id)
-                .Select(p => new { p.FitnessGoal, p.ActivityLevel, p.HealthConditions, p.UpdatedAt }).FirstOrDefaultAsync(),
-            CoachingDetails = await db.TrainerProfiles.Where(p => p.UserId == id)
-                .Select(p => new { p.Specialization, p.YearsOfExperience, Qualifications = p.Qualifications.OrderBy(q => q.Id).Select(q => q.Name).ToList(), p.UpdatedAt })
-                .FirstOrDefaultAsync(),
-            PracticeDetails = await db.ProfessionalProfiles.Where(p => p.UserId == id)
-                .Select(p => new { p.Profession, p.RegistrationNumber, p.Workplace, p.YearsOfExperience, p.UpdatedAt }).FirstOrDefaultAsync(),
-            Measurements = await db.HealthMeasurements.Where(m => m.ClientId == id).OrderBy(m => m.Date)
-                .Select(m => new { m.Date, m.WeightKg, m.HeightCm, m.BodyFatPercent, m.RestingHeartRate, m.Notes, m.CreatedAt }).ToListAsync(),
-            Workouts = await db.WorkoutLogs.Where(l => l.ClientId == id).OrderBy(l => l.Date)
-                .Select(l => new { l.Date, l.Activity, l.DurationMinutes, l.CaloriesBurned, l.Notes, l.CreatedAt }).ToListAsync(),
-            Meals = await db.MealLogs.Where(l => l.ClientId == id).OrderBy(l => l.Date)
-                .Select(l => new { l.Date, MealType = l.MealType.ToString(), l.Description, l.Calories, l.CreatedAt }).ToListAsync(),
-            WorkoutPlans = await db.WorkoutPlans.Where(p => p.ClientId == id || p.TrainerId == id)
-                .Select(p => new
-                {
-                    p.Title, p.Description, p.StartDate, p.EndDate, p.IsActive, Client = p.Client!.FullName, Trainer = p.Trainer!.FullName,
-                    Exercises = p.Exercises.Select(e => new { Day = e.Day.ToString(), e.Name, e.Sets, e.Reps, e.DurationMinutes, e.Notes })
-                }).ToListAsync(),
-            DietPlans = await db.DietPlans.Where(p => p.ClientId == id || p.TrainerId == id)
-                .Select(p => new
-                {
-                    p.Title, p.Description, p.DailyCalorieTarget, p.StartDate, p.EndDate, p.IsActive, Client = p.Client!.FullName, Trainer = p.Trainer!.FullName,
-                    Meals = p.Meals.Select(m => new { MealType = m.MealType.ToString(), m.Description, m.Calories })
-                }).ToListAsync(),
-            Appointments = await db.Appointments.Where(a => a.ClientId == id || a.TrainerId == id).OrderBy(a => a.StartsAt)
-                .Select(a => new
-                {
-                    a.StartsAt, a.EndsAt, Mode = a.Mode.ToString(), Status = a.Status.ToString(), a.Location, a.Reason, a.TrainerNote,
-                    Client = a.Client!.FullName, Provider = a.Trainer!.FullName, a.CreatedAt
-                }).ToListAsync(),
-            Feedback = await db.ProgressFeedback.Where(f => f.ClientId == id || f.AuthorId == id).OrderBy(f => f.CreatedAt)
-                .Select(f => new { Client = f.Client!.FullName, Author = f.Author!.FullName, f.Message, f.CreatedAt }).ToListAsync(),
-            ReviewsWritten = await db.AppointmentReviews.Where(r => r.ClientId == id).OrderBy(r => r.CreatedAt)
-                .Select(r => new { Provider = r.Provider!.FullName, AppointmentAt = r.Appointment!.StartsAt, r.Rating, r.Comment, r.CreatedAt, r.UpdatedAt })
-                .ToListAsync(),
-            ReviewsReceived = await db.AppointmentReviews.Where(r => r.ProviderId == id).OrderBy(r => r.CreatedAt)
-                .Select(r => new { Client = r.Client!.FullName, AppointmentAt = r.Appointment!.StartsAt, r.Rating, r.Comment, r.CreatedAt })
-                .ToListAsync(),
-            Notifications = await db.Notifications.Where(n => n.UserId == id).OrderBy(n => n.CreatedAt)
-                .Select(n => new { Type = n.Type.ToString(), n.Title, n.Message, n.CreatedAt, n.ReadAt }).ToListAsync()
-        };
-
-        logger.LogInformation("User {UserId} downloaded their data", id);
-        var json = JsonSerializer.SerializeToUtf8Bytes(export, new JsonSerializerOptions { WriteIndented = true });
-        return File(json, "application/json", $"healthtrack-my-data-{DateTime.Today:yyyy-MM-dd}.json");
     }
 
     [HttpPost, Authorize(Roles = Roles.Client), ValidateAntiForgeryToken]
@@ -518,9 +446,9 @@ public class AccountController(
 
     private async Task<ManageAccountViewModel> BuildManageAsync(
         ApplicationUser user, ProfileFormViewModel profile, ChangePasswordViewModel? password = null,
-        (ClientProfileFormViewModel Client, TrainerProfileFormViewModel Trainer, ProfessionalProfileFormViewModel Professional)? details = null)
+        (ClientProfileFormViewModel Client, TrainerProfileFormViewModel Trainer)? details = null)
     {
-        var (client, trainer, professional) = details ?? await RoleProfiles.LoadFormsAsync(db, user.Id);
+        var (client, trainer) = details ?? await RoleProfiles.LoadFormsAsync(db, user.Id);
         var role = (await userManager.GetRolesAsync(user)).FirstOrDefault();
         return new ManageAccountViewModel
         {
@@ -528,7 +456,6 @@ public class AccountController(
             Password = password ?? new ChangePasswordViewModel(),
             Client = client,
             Trainer = trainer,
-            Professional = professional,
             RoleKey = role ?? string.Empty,
             Notifications = new NotificationSettingsViewModel
             {
@@ -540,9 +467,8 @@ public class AccountController(
             },
             EmailConfirmed = user.EmailConfirmed,
             IsClient = role == Roles.Client,
-            Role = role is not null ? Roles.DisplayName(role) : "Member",
+            Role = role is not null ? role : "Member",
             TrainerName = user.TrainerId is null ? null : (await userManager.FindByIdAsync(user.TrainerId))?.FullName,
-            ProfessionalName = user.ProfessionalId is null ? null : (await userManager.FindByIdAsync(user.ProfessionalId))?.FullName,
             Avatar = Avatar.Of(user, "ht-avatar-xl"),
             MemberSince = user.CreatedAt,
             LastLoginAt = user.LastLoginAt

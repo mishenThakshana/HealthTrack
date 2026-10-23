@@ -2,7 +2,7 @@
 @using HealthTrack.Controllers
 @using HealthTrack.Data
 @{
-    var roles = Roles.All.Select(r => new SelectListItem(Roles.DisplayName(r), r));
+    var roles = Roles.All.Select(r => new SelectListItem(r, r));
     var roleLocked = ViewData["RoleLocked"] is true;
 }
 
@@ -21,7 +21,7 @@
     @if (roleLocked)
     {
         <input type="hidden" asp-for="Role" />
-        <input class="form-control" value="@Roles.DisplayName(Model.Role)" disabled aria-describedby="role-help" />
+        <input class="form-control" value="@Model.Role" disabled aria-describedby="role-help" />
         <div id="role-help" class="form-text">You can't change your own role.</div>
     }
     else

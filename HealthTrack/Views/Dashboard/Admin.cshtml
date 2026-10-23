@@ -17,12 +17,11 @@
     </div>
 
     <div class="row g-3 mb-4">
-        <div class="col-6 col-md-4 col-xl-2"><partial name="_StatTile" model='new StatTile("bi-people", "Total users", Model.TotalUsers.ToString(), $"{Model.NewThisWeek} new this week")' /></div>
-        <div class="col-6 col-md-4 col-xl-2"><partial name="_StatTile" model='new StatTile("bi-person-check", "Active", Model.ActiveThisWeek.ToString(), "Signed in this week")' /></div>
-        <div class="col-6 col-md-4 col-xl-2"><partial name="_StatTile" model='new StatTile("bi-person", "Clients", Model.Clients.ToString(), "Registered clients")' /></div>
-        <div class="col-6 col-md-4 col-xl-2"><partial name="_StatTile" model='new StatTile("bi-person-workspace", "Trainers", Model.Trainers.ToString(), "Registered trainers")' /></div>
-        <div class="col-6 col-md-4 col-xl-2"><partial name="_StatTile" model='new StatTile("bi-hospital", "Professionals", Model.Professionals.ToString(), "Health professionals")' /></div>
-        <div class="col-6 col-md-4 col-xl-2"><partial name="_StatTile" model='new StatTile("bi-lock", "Locked", Model.LockedOut.ToString(), "Disabled or locked out")' /></div>
+        <div class="col-6 col-md-4 col-xl"><partial name="_StatTile" model='new StatTile("bi-people", "Total users", Model.TotalUsers.ToString(), $"{Model.NewThisWeek} new this week")' /></div>
+        <div class="col-6 col-md-4 col-xl"><partial name="_StatTile" model='new StatTile("bi-person-check", "Active", Model.ActiveThisWeek.ToString(), "Signed in this week")' /></div>
+        <div class="col-6 col-md-4 col-xl"><partial name="_StatTile" model='new StatTile("bi-person", "Clients", Model.Clients.ToString(), "Registered clients")' /></div>
+        <div class="col-6 col-md-4 col-xl"><partial name="_StatTile" model='new StatTile("bi-person-workspace", "Trainers", Model.Trainers.ToString(), "Registered trainers")' /></div>
+        <div class="col-6 col-md-4 col-xl"><partial name="_StatTile" model='new StatTile("bi-lock", "Locked", Model.LockedOut.ToString(), "Disabled or locked out")' /></div>
     </div>
 
     <div class="row g-3 mb-3">
@@ -86,7 +85,7 @@
                                             <div class="fw-semibold">@user.FullName</div>
                                             <div class="small text-muted text-break">@user.Email</div>
                                         </td>
-                                        <td><span class="badge rounded-pill bg-primary-subtle text-primary">@HealthTrack.Data.Roles.DisplayName(user.Role)</span></td>
+                                        <td><span class="badge rounded-pill bg-primary-subtle text-primary">@user.Role</span></td>
                                         <td class="text-end text-nowrap small">@user.CreatedAt.ToLocalTime().ToString("d MMM yyyy")</td>
                                         <td class="text-end text-nowrap small d-none d-sm-table-cell">@(user.LastLoginAt?.ToLocalTime().ToString("d MMM, HH:mm") ?? "Never")</td>
                                     </tr>

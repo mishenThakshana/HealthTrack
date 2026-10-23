@@ -27,14 +27,13 @@
                         var (icon, hint) = role switch
                         {
                             HealthTrack.Data.Roles.Trainer => ("bi-person-badge", "Coach and manage clients"),
-                            HealthTrack.Data.Roles.Professional => ("bi-hospital", "Offer health consultations"),
                             _ => ("bi-person-heart", "Track my own health")
                         };
-                        <div class="col-sm-4">
+                        <div class="col-sm-6">
                             <input type="radio" class="btn-check" asp-for="Role" value="@role" id="@id" />
                             <label class="ht-role-option w-100 h-100" for="@id">
                                 <i class="bi @icon"></i>
-                                <span class="fw-semibold">@HealthTrack.Data.Roles.DisplayName(role)</span>
+                                <span class="fw-semibold">@role</span>
                                 <small class="text-muted">@hint</small>
                             </label>
                         </div>
@@ -101,45 +100,6 @@
                 <partial name="_QualificationsField" for="Trainer" />
             </fieldset>
 
-            <fieldset class="ht-role-section mb-3" data-show-for-role="@Roles.Professional" hidden="@HiddenUnless(Roles.Professional)">
-                <legend class="form-label fw-semibold fs-6 mb-1"><i class="bi bi-hospital text-primary"></i> About your practice</legend>
-                <p class="form-text mt-0 mb-2">Clients see your profession and workplace when they book a consultation.</p>
-                <div class="row g-2">
-                    <div class="col-sm-7">
-                        <div class="form-floating">
-                            <select asp-for="Professional.Profession" asp-items="@(new SelectList(ProfileOptions.Professions))" class="form-select">
-                                <option value="">Select</option>
-                            </select>
-                            <label asp-for="Professional.Profession"></label>
-                        </div>
-                        <span asp-validation-for="Professional.Profession" class="text-danger small"></span>
-                    </div>
-                    <div class="col-sm-5">
-                        <div class="input-group">
-                            <div class="form-floating">
-                                <input asp-for="Professional.YearsOfExperience" type="number" min="0" max="60" class="form-control" placeholder="0" />
-                                <label asp-for="Professional.YearsOfExperience"></label>
-                            </div>
-                            <span class="input-group-text">years</span>
-                        </div>
-                        <span asp-validation-for="Professional.YearsOfExperience" class="text-danger small"></span>
-                    </div>
-                    <div class="col-sm-6">
-                        <div class="form-floating">
-                            <input asp-for="Professional.RegistrationNumber" class="form-control" maxlength="50" placeholder="Registration number" />
-                            <label asp-for="Professional.RegistrationNumber"></label>
-                        </div>
-                        <span asp-validation-for="Professional.RegistrationNumber" class="text-danger small"></span>
-                    </div>
-                    <div class="col-sm-6">
-                        <div class="form-floating">
-                            <input asp-for="Professional.Workplace" class="form-control" maxlength="100" placeholder="Workplace" />
-                            <label asp-for="Professional.Workplace"></label>
-                        </div>
-                        <span asp-validation-for="Professional.Workplace" class="text-danger small"></span>
-                    </div>
-                </div>
-            </fieldset>
 
             <div class="row g-3 mb-1">
                 <div class="col-sm-6">

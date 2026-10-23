@@ -68,4 +68,23 @@ public class TrackingPageViewModel<TForm, TEntry> where TForm : new()
     public TForm Form { get; init; } = new();
     public int? EditingId { get; init; }
     public IReadOnlyList<TEntry> Entries { get; init; } = [];
+    public PlanScheduleViewModel Plan { get; init; } = new();
+}
+
+public record PlannedExercise(WorkoutExercise Exercise, bool Logged);
+
+public record PlannedMeal(DietMeal Meal, bool Logged);
+
+public record UpcomingWorkoutDay(DateOnly Date, WorkoutPlan Plan, IReadOnlyList<WorkoutExercise> Exercises);
+
+public class PlanScheduleViewModel
+{
+    public WorkoutPlan? WorkoutPlan { get; init; }
+    public IReadOnlyList<PlannedExercise> Exercises { get; init; } = [];
+    public IReadOnlyList<UpcomingWorkoutDay> UpcomingWorkouts { get; init; } = [];
+    public WorkoutPlan? NextWorkoutPlan { get; init; }
+
+    public DietPlan? DietPlan { get; init; }
+    public IReadOnlyList<PlannedMeal> Meals { get; init; } = [];
+    public DietPlan? NextDietPlan { get; init; }
 }

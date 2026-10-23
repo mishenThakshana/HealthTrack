@@ -1,9 +1,8 @@
-using System.Globalization;
-using System.Text;
 using HealthTrack.Data;
 using HealthTrack.Helpers;
 using HealthTrack.Models;
 using HealthTrack.Models.ViewModels;
+using HealthTrack.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -17,48 +16,68 @@ public class ReportsController(ApplicationDbContext db, UserManager<ApplicationU
     private string UserId => userManager.GetUserId(User)!;
     private bool IsAdmin => User.IsInRole(Roles.Admin);
 
-    public async Task<IActionResult> Index(int days = 30) => View(await BuildAsync(NormalizeDays(days)));
+    private const int DefaultDays = 30;
 
-    public async Task<IActionResult> Export(int days = 30)
+    // A preset period (days) or a custom one (from and to, both needed).
+    public async Task<IActionResult> Index(int days = DefaultDays, DateOnly? from = null, DateOnly? to = null)
     {
-        days = NormalizeDays(days);
-        var report = await BuildAsync(days);
-
-        string[] trainerHeader = IsAdmin ? ["Trainer"] : [];
-        string[] header =
-        [
-            "Client", "Email", .. trainerHeader, "Workouts", "Workout minutes", "Calories burned",
-            "Avg calories eaten per logged day", "Measurements", "Weight change (kg)", "Active days", "Last activity", "Engagement"
-        ];
-
-        var csv = new StringBuilder();
-        csv.AppendLine(string.Join(',', header.Select(Csv)));
-        foreach (var c in report.Clients)
-        {
-            string[] trainer = IsAdmin ? [c.TrainerName ?? "Unassigned"] : [];
-            string[] row =
-            [
-                c.FullName, c.Email, .. trainer,
-                c.Workouts.ToString(), c.Minutes.ToString(), c.CaloriesBurned.ToString(),
-                c.AverageCaloriesEaten?.ToString() ?? "", c.Measurements.ToString(), c.WeightChange?.ToString("0.0", CultureInfo.InvariantCulture) ?? "",
-                c.ActiveDays.ToString(), c.LastActivity?.ToString("yyyy-MM-dd") ?? "", c.Engagement
-            ];
-            csv.AppendLine(string.Join(',', row.Select(Csv)));
-        }
-
-        logger.LogInformation("User {UserId} exported the client report ({Days} days, {Rows} clients)", UserId, days, report.Clients.Count);
-        return File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray(),
-            "text/csv", $"healthtrack-client-report-{Dates.Today:yyyy-MM-dd}-{days}d.csv");
+        var range = Periods.Resolve(days, from, to, DefaultDays, out var rangeError);
+        return View(await BuildAsync(range, rangeError));
     }
 
-    private static int NormalizeDays(int days) => Periods.Ranges.Contains(days) ? days : 30;
-
-    private static string Csv(string value)
+    // Downloads the report shown on the page as an Excel workbook or a PDF.
+    public async Task<IActionResult> Export(int days = DefaultDays, DateOnly? from = null, DateOnly? to = null, string format = ReportExport.Excel)
     {
-        if (value.Length > 0 && "=+-@\t\r".Contains(value[0])
-            && !decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out _))
-            value = "'" + value;
-        return value.IndexOfAny([',', '"', '\n', '\r']) >= 0 ? $"\"{value.Replace("\"", "\"\"")}\"" : value;
+        if (!ReportExport.IsFormat(format))
+            return NotFound();
+
+        // Invalid custom dates can't be fixed from a download link, so they're refused rather than silently replaced.
+        var range = Periods.Resolve(days, from, to, DefaultDays, out var rangeError);
+        if (rangeError is not null)
+            return BadRequest(rangeError);
+
+        var report = await BuildAsync(range);
+
+        string[] trainerHeader = IsAdmin ? ["Trainer"] : [];
+        var clients = new ExportTable("Client performance",
+            ["Client", "Email", .. trainerHeader, "Workouts", "Workout minutes", "Calories burned",
+             "Avg calories eaten per logged day", "Measurements", "Weight change (kg)", "Active days", "Last activity", "Engagement"],
+            report.Clients.Select(c => (IReadOnlyList<object?>)
+            [
+                c.FullName, c.Email, .. IsAdmin ? new object?[] { c.TrainerName ?? "Unassigned" } : [],
+                c.Workouts, c.Minutes, c.CaloriesBurned, c.AverageCaloriesEaten, c.Measurements, c.WeightChange,
+                c.ActiveDays, c.LastActivity, c.Engagement
+            ]).ToList());
+
+        var engagement = new ExportTable("Engagement over time",
+            ["Period", .. report.Engagement.Series.Select(s => s.Label)],
+            report.Engagement.Labels.Select((label, i) => (IReadOnlyList<object?>)
+                [label, .. report.Engagement.Series.Select(s => (object?)s.Values[i])]).ToList());
+
+        var export = new ExportReport(
+            IsAdmin ? "HealthTrack client report (all trainers)" : "HealthTrack client report",
+            $"{range.From:d MMM yyyy} – {range.To:d MMM yyyy} ({(range.IsCustom ? "" : "last ")}{range.Days} days) · generated {DateTime.Now:d MMM yyyy HH:mm}",
+            [
+                ("Clients", report.TotalClients),
+                ("Active clients", report.ActiveClients),
+                ("Average active days per client per week", report.AverageActiveDaysPerWeek),
+                ("Entries logged", report.TotalEntries),
+                ("Appointments completed", report.AppointmentsCompleted)
+            ],
+            [
+                clients,
+                engagement,
+                new("Popular plan exercises", ["Exercise", "Plans", "Clients"],
+                    report.TopExercises.Select(e => (IReadOnlyList<object?>)[e.Name, e.Plans, e.Clients]).ToList()),
+                new("Most logged activities", ["Activity", "Sessions", "Minutes", "Clients"],
+                    report.TopActivities.Select(a => (IReadOnlyList<object?>)[a.Activity, a.Sessions, a.Minutes, a.Clients]).ToList()),
+                new("Appointments by status", ["Status", "Appointments"],
+                    report.Appointments.Select(a => (IReadOnlyList<object?>)[a.Status, a.Count]).ToList())
+            ]);
+
+        logger.LogInformation("User {UserId} exported the client report as {Format} ({From} to {To}, {Rows} clients)",
+            UserId, format, range.From, range.To, report.Clients.Count);
+        return ReportExport.ToFile(export, format, $"healthtrack-client-report-{Dates.Today:yyyy-MM-dd}-{range.FileSuffix}");
     }
 
     private static string EngagementLevel(int activeDays, int days)
@@ -73,10 +92,9 @@ public class ReportsController(ApplicationDbContext db, UserManager<ApplicationU
         };
     }
 
-    private async Task<ReportsViewModel> BuildAsync(int days)
+    private async Task<ReportsViewModel> BuildAsync(DateRange range, string? rangeError = null)
     {
-        var from = Periods.From(days);
-        var today = Dates.Today;
+        var (from, to, days) = (range.From, range.To, range.Days);
         var fromTime = from.ToDateTime(TimeOnly.MinValue);
 
         var clientQuery = IsAdmin ? db.UsersInRole(Roles.Client) : db.Users.Where(u => u.TrainerId == UserId);
@@ -85,11 +103,11 @@ public class ReportsController(ApplicationDbContext db, UserManager<ApplicationU
             .ToListAsync();
         var ids = clients.Select(c => c.Id).ToList();
 
-        var workouts = await db.WorkoutLogs.Where(l => ids.Contains(l.ClientId) && l.Date >= from && l.Date <= today)
+        var workouts = await db.WorkoutLogs.Where(l => ids.Contains(l.ClientId) && l.Date >= from && l.Date <= to)
             .Select(l => new { l.ClientId, l.Date, l.Activity, l.DurationMinutes, l.CaloriesBurned }).ToListAsync();
-        var meals = await db.MealLogs.Where(l => ids.Contains(l.ClientId) && l.Date >= from && l.Date <= today)
+        var meals = await db.MealLogs.Where(l => ids.Contains(l.ClientId) && l.Date >= from && l.Date <= to)
             .Select(l => new { l.ClientId, l.Date, l.Calories }).ToListAsync();
-        var measurements = await db.HealthMeasurements.Where(m => ids.Contains(m.ClientId) && m.Date >= from && m.Date <= today)
+        var measurements = await db.HealthMeasurements.Where(m => ids.Contains(m.ClientId) && m.Date >= from && m.Date <= to)
             .OrderBy(m => m.Date).ThenBy(m => m.Id)
             .Select(m => new { m.ClientId, m.Date, m.WeightKg }).ToListAsync();
         var lastActivity = await db.WorkoutLogs.Where(l => ids.Contains(l.ClientId)).Select(l => new { l.ClientId, l.Date })
@@ -119,7 +137,7 @@ public class ReportsController(ApplicationDbContext db, UserManager<ApplicationU
         }).ToList();
 
         var weekly = days > 30;
-        var buckets = Periods.Buckets(days, weekly);
+        var buckets = Periods.Buckets(range, weekly);
         var engagement = new ChartData("engagement", buckets.Select(b => b.Label).ToList(),
             [new(weekly ? "Active clients per week" : "Active clients per day",
                 buckets.Select(b => (decimal?)activeDates.Where(x => b.Contains(x.Date)).Select(x => x.ClientId).Distinct().Count()).ToList(),
@@ -129,13 +147,15 @@ public class ReportsController(ApplicationDbContext db, UserManager<ApplicationU
         var plans = IsAdmin ? db.WorkoutPlans : db.WorkoutPlans.Where(p => p.TrainerId == UserId);
         var exercises = await plans.SelectMany(p => p.Exercises.Select(e => new { e.Name, p.Id, p.ClientId })).ToListAsync();
         var appointments = IsAdmin ? db.Appointments : db.Appointments.Where(a => a.TrainerId == UserId);
-        var statusCounts = await appointments.Where(a => a.StartsAt >= fromTime && a.StartsAt < today.AddDays(1).ToDateTime(TimeOnly.MinValue))
+        var statusCounts = await appointments.Where(a => a.StartsAt >= fromTime && a.StartsAt < to.AddDays(1).ToDateTime(TimeOnly.MinValue))
             .GroupBy(a => a.Status).Select(g => new { g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.Key, x => x.Count);
 
         return new ReportsViewModel
         {
             Days = days,
+            Range = range,
+            RangeError = rangeError,
             IsAdmin = IsAdmin,
             TotalClients = rows.Count,
             ActiveClients = rows.Count(r => r.ActiveDays > 0),

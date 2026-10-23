@@ -32,24 +32,3 @@ public class TrainerProfileFormViewModel
     [Display(Name = "Qualifications or certifications")]
     public List<string?> Qualifications { get; set; } = [null];
 }
-
-public class ProfessionalProfileFormViewModel
-{
-    [Required(ErrorMessage = "Please choose your profession.")]
-    [Display(Name = "Profession")]
-    public string? Profession { get; set; }
-
-    [Required(ErrorMessage = "Enter your registration number.")]
-    [StringLength(50, MinimumLength = 3, ErrorMessage = "Use 3 to 50 characters.")]
-    [Display(Name = "Registration / licence no.")]
-    public string? RegistrationNumber { get; set; }
-
-    [StringLength(100)]
-    [Display(Name = "Workplace (optional)")]
-    public string? Workplace { get; set; }
-
-    [Required(ErrorMessage = "Enter your experience.")]
-    [Range(0, 60, ErrorMessage = "Enter 0 to 60 years.")]
-    [Display(Name = "Experience")]
-    public int? YearsOfExperience { get; set; }
-}

@@ -103,9 +103,6 @@ namespace HealthTrack.Migrations
                     b.Property<DateTime?>("PrivacyAcceptedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("ProfessionalId")
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<bool>("RemindMeals")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
@@ -138,8 +135,6 @@ namespace HealthTrack.Migrations
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex")
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
-
-                    b.HasIndex("ProfessionalId");
 
                     b.HasIndex("TrainerId");
 
@@ -510,46 +505,6 @@ namespace HealthTrack.Migrations
                     b.ToTable("Notifications");
                 });
 
-            modelBuilder.Entity("HealthTrack.Models.ProfessionalProfile", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Profession")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("RegistrationNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Workplace")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<int>("YearsOfExperience")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId")
-                        .IsUnique();
-
-                    b.ToTable("ProfessionalProfiles");
-                });
-
             modelBuilder.Entity("HealthTrack.Models.ProfilePhoto", b =>
                 {
                     b.Property<string>("UserId")
@@ -917,17 +872,10 @@ namespace HealthTrack.Migrations
 
             modelBuilder.Entity("HealthTrack.Models.ApplicationUser", b =>
                 {
-                    b.HasOne("HealthTrack.Models.ApplicationUser", "Professional")
-                        .WithMany()
-                        .HasForeignKey("ProfessionalId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
                     b.HasOne("HealthTrack.Models.ApplicationUser", "Trainer")
                         .WithMany()
                         .HasForeignKey("TrainerId")
                         .OnDelete(DeleteBehavior.NoAction);
-
-                    b.Navigation("Professional");
 
                     b.Navigation("Trainer");
                 });
@@ -1046,17 +994,6 @@ namespace HealthTrack.Migrations
                     b.HasOne("HealthTrack.Models.ApplicationUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("HealthTrack.Models.ProfessionalProfile", b =>
-                {
-                    b.HasOne("HealthTrack.Models.ApplicationUser", "User")
-                        .WithOne("ProfessionalProfile")
-                        .HasForeignKey("HealthTrack.Models.ProfessionalProfile", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1210,8 +1147,6 @@ namespace HealthTrack.Migrations
             modelBuilder.Entity("HealthTrack.Models.ApplicationUser", b =>
                 {
                     b.Navigation("ClientProfile");
-
-                    b.Navigation("ProfessionalProfile");
 
                     b.Navigation("TrainerProfile");
                 });

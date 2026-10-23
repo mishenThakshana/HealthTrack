@@ -25,7 +25,7 @@ public abstract class AppointmentSlotViewModel
 public class AppointmentRequestViewModel : AppointmentSlotViewModel
 {
     [Required(ErrorMessage = "Please choose who you'd like to see.")]
-    [Display(Name = "Trainer or health professional")]
+    [Display(Name = "Trainer")]
     public string TrainerId { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Please say what you'd like to discuss.")]

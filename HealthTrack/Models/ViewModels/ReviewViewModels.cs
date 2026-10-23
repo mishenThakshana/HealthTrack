@@ -19,7 +19,7 @@ public record RatingSummary(double? Average, int Count)
     public string Label => Average is { } avg ? $"{avg:0.0} ({Count} review{(Count == 1 ? "" : "s")})" : "No reviews yet";
 }
 
-// A review as shown on a trainer's or professional's profile. Clients are shown by first name and initial only.
+// A review as shown on a trainer's profile. Clients are shown by first name and initial only.
 public record ReviewItem(int Id, int AppointmentId, string ClientName, int Rating, string? Comment, DateTime CreatedAt)
 {
     public string ClientShortName
@@ -40,7 +40,6 @@ public record ReviewItem(int Id, int AppointmentId, string ClientName, int Ratin
 public class ProviderProfileViewModel
 {
     public required ProviderCard Provider { get; init; }
-    public bool IsTrainer { get; init; }
     public RatingSummary Rating => new(Provider.AverageRating, Provider.ReviewCount);
     public IReadOnlyList<int> StarCounts { get; init; } = [];
     public IReadOnlyList<ReviewItem> Reviews { get; init; } = [];
@@ -49,8 +48,6 @@ public class ProviderProfileViewModel
     public bool IsSelf { get; init; }
     public bool IsMine { get; init; }
     public string? CurrentChoiceName { get; init; }
-
-    public string Noun => IsTrainer ? "trainer" : "health professional";
 }
 
 // A completed appointment the client hasn't rated yet.

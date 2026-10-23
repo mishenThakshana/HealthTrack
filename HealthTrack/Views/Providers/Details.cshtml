@@ -11,7 +11,7 @@
     {
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb small">
-                <li class="breadcrumb-item"><a asp-action="Index" asp-route-show="@(Model.IsTrainer ? null : "professionals")">@(Model.IsTrainer ? "Trainers" : "Health professionals")</a></li>
+                <li class="breadcrumb-item"><a asp-action="Index">Trainers</a></li>
                 <li class="breadcrumb-item active" aria-current="page">@p.FullName</li>
             </ol>
         </nav>
@@ -22,7 +22,7 @@
             <div class="ht-panel text-center">
                 <partial name="_Avatar" model='p.Avatar("ht-avatar-xl")' />
                 <h1 class="h4 mt-3 mb-1">@p.FullName</h1>
-                <span class="badge rounded-pill bg-primary-subtle text-primary mb-2">@(Model.IsTrainer ? "Trainer" : "Health professional")</span>
+                <span class="badge rounded-pill bg-primary-subtle text-primary mb-2">Trainer</span>
                 @if (p.Headline is not null) { <div class="fw-semibold text-primary">@p.Headline</div> }
                 <div class="my-2"><partial name="_Stars" model="Model.Rating" /></div>
 
@@ -31,11 +31,6 @@
                     {
                         <dt>Experience</dt>
                         <dd>@ProfileOptions.Experience(years)</dd>
-                    }
-                    @if (p.Workplace is not null)
-                    {
-                        <dt>Workplace</dt>
-                        <dd>@p.Workplace</dd>
                     }
                     @if (p.Qualifications.Count > 0)
                     {
@@ -56,13 +51,13 @@
                     <div class="d-grid gap-2 mt-3">
                         @if (Model.IsMine)
                         {
-                            <span class="badge rounded-pill ht-badge-active py-2"><i class="bi bi-check-lg"></i> Your @Model.Noun</span>
+                            <span class="badge rounded-pill ht-badge-active py-2"><i class="bi bi-check-lg"></i> Your trainer</span>
                         }
                         else
                         {
                             <form asp-action="Choose" asp-route-id="@p.Id" asp-route-returnUrl="@returnUrl" method="post" class="d-grid"
-                                  data-confirm="@(Model.CurrentChoiceName is null ? null : $"Replace {Model.CurrentChoiceName} with {p.FullName} as your {Model.Noun}?")">
-                                <button type="submit" class="btn btn-primary"><i class="bi bi-person-check"></i> Choose as my @Model.Noun</button>
+                                  data-confirm="@(Model.CurrentChoiceName is null ? null : $"Replace {Model.CurrentChoiceName} with {p.FullName} as your trainer?")">
+                                <button type="submit" class="btn btn-primary"><i class="bi bi-person-check"></i> Choose as my trainer</button>
                             </form>
                         }
                         <a class="btn btn-outline-primary" asp-controller="Appointments" asp-action="Index" asp-route-with="@p.Id" asp-fragment="book">

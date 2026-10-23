@@ -2,6 +2,104 @@
 
 A log of every task completed on HealthTrack, newest first.
 
+## 2026-10-23 — Custom date ranges for Reports, Progress and their exports
+
+Commit: not committed yet
+
+### Added
+- **`DateRange` (`Helpers/Periods.cs`):** a period's `From`/`To`, `IsCustom`, `Days`, `Contains`, `Label` ("Last 30 days" or "1 Oct 2026 – 20 Oct 2026"), `FileSuffix` for export names ("30d" or "2026-10-01-to-2026-10-20") and `RouteDays`/`RouteFrom`/`RouteTo` for links that keep the same range.
+- **`Periods.Resolve(days, from, to, defaultDays, out error)`:** uses `from`/`to` when both are given and valid, otherwise the preset. The rules: both dates are needed, the start must be on or before the end, the end can't be in the future, and the range can be at most 2 years (`MaxCustomDays` = 731). `Periods.Days/Weeks/Buckets` now take a `DateRange`, so charts end at the range's end date, not today. Week buckets are clipped to the range, and labels include the year for ranges over a year.
+- **`Views/Shared/_RangePicker.cshtml`** (+ `RangePicker` record), used on Reports and Progress: the preset buttons, a **custom range** form (two date inputs capped at today, and **Apply**, highlighted when a custom range is active), and the **Excel** / **PDF** buttons, which export exactly the range on screen. `.ht-range-custom` CSS keeps the date inputs compact.
+
+### Changed
+- **`ReportsController.Index/Export`** and **`ProgressController.Index/Export`** accept `from` and `to` alongside `days`, and the builders query and chart `range.From`..`range.To`. With invalid custom dates, the pages show a warning ("The end date can't be in the future. Showing last 90 days instead.") and fall back to the preset. Export links with invalid dates return **400** with the reason rather than silently exporting a different period.
+- **Exports:** the subtitle shows the exact dates ("1 Sep 2026 – 30 Sep 2026 (30 days)"), and the file name includes the range. The progress export's **Trainer feedback** now only lists feedback given within the period (before, it listed the latest 20 regardless of the period).
+- The custom range is kept when a trainer adds or deletes feedback, and when opening a client's progress from the Reports table.
+- README: Progress and Reports mention custom date ranges.
+
+### Verified
+- Built with no warnings. Ran on port 5299 and scripted 17 checks, all passing:
+  - The custom Progress page shows its label, prefilled dates and export links with the dates.
+  - The custom Excel export contains only the workout inside the range and has the dated file name. The custom PDF renders (checked visually).
+  - Reversed dates, a future end date, ranges over 2 years and a missing date each show their warning. An invalid export returns 400. Presets still work.
+  - Custom Reports page and Excel export work, and the client link keeps the range.
+  - A trainer can export a custom range for their client. Adding feedback redirects with the range kept.
+- Deleted the test client. The test trainer from the previous task was reused.
+
+## 2026-10-23 — Health professional role removed; Excel and PDF report exports for trainers, admins and clients; JSON data download removed
+
+Commit: not committed yet
+
+### Why the role was removed
+- The coursework brief (`AD CW 02.docx`) defines three account types: "Users (clients), Trainers, and Administrators", and only **trainers** approve, update or cancel appointments. Health professionals appear only in the case-study intro and in "Clients can schedule consultations with trainers or healthcare professionals", with no role, dashboard or workflow of their own. The role added a second client link (`ProfessionalId`), a second access path to client health data and a separate dashboard, so it was removed. Health-focused consultations are booked with trainers; a **Nutrition and diet** specialization was added for that (Injury recovery already existed).
+
+### Removed
+- **Role and data model:** `Roles.Professional`, `Roles.Providers` and `Roles.DisplayName`; `AppointmentManagers` is now Trainer + Admin and `Roles.All` is Client, Trainer, Admin. Deleted `Models/ProfessionalProfile.cs`, `ProfessionalProfileFormViewModel`, `ApplicationUser.ProfessionalId`/`Professional`/`ProfessionalProfile`, the `ProfessionalProfiles` DbSet and its relationships, `ProfileOptions.Professions`, and the `ProfessionalChosen` notification type.
+- **Migration `20261023114325_RemoveHealthProfessionalRole`:** before dropping anything, any existing health professional becomes a trainer (a `TrainerProfiles` row with a matching specialization: Dietitian → Nutrition and diet, Physiotherapist → Injury recovery, others → General fitness; a qualification "Profession (reg. number)"; role switched to Trainer), so their appointments and reviews stay valid. It then removes the Professional role, deletes `ProfessionalChosen` notifications, and drops the `ProfessionalProfiles` table and the `AspNetUsers.ProfessionalId` column, index and foreign key. The dev database had no professional accounts.
+- **Pages and code paths:** the professional dashboard (`DashboardController.Professional`, `Views/Dashboard/Professional.cshtml`, `ProfessionalDashboardViewModel`, `ChosenByClient`); the registration and My account "About your practice" sections; the professional branch in `RoleProfiles` (validate/apply/remove/load), `AccountController.Register`/`UpdateDetails`/`BuildManageAsync`, `UsersController` (role change unlinking, details loading), `ClientAccess` (professionals seeing clients who chose them or had appointments), `ProfilePhotosController.CanSeeAsync`, `AppointmentsController` (provider list group, includes), `DbSeeder` (profession fields) and `NotificationService`.
+- **Admin dashboard:** the "Professionals" tile (the remaining five tiles now share the row).
+- **JSON data download:** `AccountController.DownloadData` and the "Download my data" button. My account → Your data now links clients to **Export my report** (Progress page). The privacy policy's "Get a copy" point says the same.
+
+### Changed
+- **Find experts → Find a trainer** (`/Providers`, menu item and banner): trainers only. No Trainers/Health professionals tabs, a single "Your trainer" card, and search/filter by specialization or qualification. `Leave` no longer takes a role. `ProviderCard.Workplace`, `ProvidersPageViewModel.ShowProfessionals`/`MyProfessional`/`MyChoiceId`/`Noun` and `ProviderProfileViewModel.IsTrainer`/`Noun` were removed. The banner reads "You haven't chosen a trainer yet."
+- **Progress:** only clients (their own) and trainers (their clients) can open it; feedback is trainer-only; the non-trainer breadcrumb was removed.
+- **Text:** registration (Client and Trainer side by side), admin Users pages, Appointments page, booking field label ("Trainer"), home page feature card, privacy policy, My account picture hint, and comments now refer to trainers only.
+
+### Added — report exports (Excel and PDF)
+- **Packages:** `ClosedXML` 0.105.1 (Excel) and `QuestPDF` 2026.9.1 (PDF). `Program.cs` sets `QuestPDF.Settings.License = LicenseType.Community`.
+- **`Services/ReportExport.cs`:** `ExportReport` (title, subtitle, summary label/value pairs, tables) and `ExportTable` records, with `ToExcel`, `ToPdf` and `ToFile(report, format, fileName)`.
+  - **Excel:** a Summary sheet, then one sheet per table with an orange header row, frozen header, auto-filter and fitted column widths. Numbers and dates keep their type, so they can be sorted and summed. Text is always written as text, so a value like `=HYPERLINK(...)` is never treated as a formula (checked: the workbook has no formula cells).
+  - **PDF:** A4 landscape, orange title, summary table, one section per table with a header row that repeats across pages. Columns are sized by their longest text. Empty tables say "No entries in this period." The footer reads "HealthTrack · page X of Y".
+- **Reports (`ReportsController.Export(days, format)`, trainers and admins):** replaces the CSV export. It contains a summary (clients, active clients, active days per week, entries, completed appointments) plus Client performance (with a Trainer column for admins), Engagement over time, Popular plan exercises, Most logged activities and Appointments by status. **Excel** and **PDF** buttons replace the CSV button. The old CSV helper was removed.
+- **Client progress report (`ProgressController.Export(id, days, format)`):** a summary (current weight, weight change, BMI, workouts, minutes, calories burned, average calories eaten, calorie target, active days) plus every Measurement (with BMI from the latest known height), Workout and Meal in the period, Top activities and Trainer feedback. Clients export their own; trainers can export their clients' (others get 404). **Excel** and **PDF** buttons sit next to the period picker on the Progress page. Every export is logged.
+- An unknown `format` returns 404.
+
+### Docs
+- README: requirements note on how "healthcare professionals" is covered, tech stack (ClosedXML, QuestPDF), registration/profile/picture sections, **Find a trainer** section, new **Logging from your plans** section (previous task), ratings, appointments, progress/reports exports, security (Excel formula safety, export instead of JSON), the "Who can do what" table (Health professional row removed) and the progress checklist.
+
+### Verified
+- Built with no warnings. Ran on port 5299 (the migration applied cleanly) and scripted an end-to-end test (23 checks, all passing after fixing the test's own sheet-name regex):
+  - Register offers only Client and Trainer, and the admin's role list has no professional.
+  - Client Excel/PDF progress exports download with the right sheets, and the formula text stays plain text.
+  - Trainers can export their own client's PDF but get 404 for another client. A client gets refused on the trainer report.
+  - Trainer and admin report Excel/PDF download with the right sheets.
+  - `format=json` and `/Account/DownloadData` give 404, and My account shows the export link.
+  - Find a trainer lists trainers only (even with `?show=professionals`), and the booking list has no professionals group.
+  - All three dashboards render, the admin dashboard has no Professionals tile, and `/Dashboard/Professional` is 404.
+  - I opened the generated PDFs and checked the layout. That's why I widened the email column and set a minimum column width.
+- **Cleanup:** deleted the two test client accounts. The test trainer `exporttestexporttrainer755987@example.com` ("Export Trainer") is still there, as is "Plan Trainer" from the previous task, since admins can only delete client accounts.
+- **Note:** if `dotnet watch` is running, restart it. New NuGet packages and a migration need a full restart; the migration applies automatically on startup.
+
+## 2026-10-23 — One-click logging of planned workouts and meals; "Coming up" workout schedule
+
+Commit: not committed yet
+
+### Added
+- **`Controllers/PlanSchedule.cs`** (shared helper, used by the dashboard and both log pages): `ForClientAsync(db, clientId)` returns a `PlanScheduleViewModel` with:
+  - today's workout plan and its exercises for today (`Day` = today or "any day"), each flagged `Logged` when a workout log for today has the same activity name (case-insensitive);
+  - today's diet plan and its meals, each flagged `Logged` when a meal log for today has the same meal type and description;
+  - `UpcomingWorkouts`: the next 6 days, each with the plan in effect that day and its exercises (an empty list = rest day; days with no plan are skipped);
+  - `NextWorkoutPlan` / `NextDietPlan`: the earliest active plan that starts after today.
+  - "Plan in effect" now also respects `EndDate` (the old dashboard query only checked `StartDate`, so an ended plan could still show). When plans overlap, the latest start date wins, as before.
+  - `LogFormFor(exercise | meal)` and `SetsAndReps(exercise)` helpers for pre-filling log forms.
+- **View models (`TrackingViewModels.cs`):** `PlanScheduleViewModel`, `PlannedExercise`, `PlannedMeal`, `UpcomingWorkoutDay`; `TrackingPageViewModel` gained `Plan`.
+- **`WorkoutLogsController`:**
+  - `LogPlanned(exerciseId, returnUrl)` (POST): logs today's planned exercise in one click — activity = exercise name, minutes = planned minutes, notes = "3 × 10 reps" when sets/reps are set. Exercises without planned minutes redirect to the pre-filled form instead (minutes are required on a workout log). Logging something already logged today adds nothing and says "… is already logged for today."
+  - `Index?exercise=<id>`: opens the log form pre-filled from the exercise so the client can adjust before saving.
+  - Only exercises scheduled for the client **today** in their own active plan are accepted; anything else returns 404 (checked with another client's exercise and a future-day exercise).
+- **`MealLogsController`:** same pair — `LogPlanned(mealId, returnUrl)` copies meal type, description and calories into today's log; `Index?meal=<id>` pre-fills the form.
+- `returnUrl` is only followed when local (`Url.IsLocalUrl`); otherwise the action returns to its log page.
+- **Partials:** `_TodaysWorkout.cshtml`, `_TodaysMeals.cshtml`, `_UpcomingWorkouts.cshtml`. Each planned item shows a **Log** button and a pencil (**Adjust before logging**), or a green **Logged** badge once done; exercises without minutes show **Log…** which opens the pre-filled form. Upcoming shows a date chip per day with the exercise names or "Rest day", the plan title when it differs from today's plan, and a "New workout plan “…” starts Tue 27 Oct." note. The meals panel shows a matching note for a new diet plan.
+
+### Changed
+- **Client dashboard:** "Today's workout" and "Diet schedule" (renamed **Today's meals**) now use the new partials, so clients can log straight from the dashboard and are sent back there. A **Coming up** panel sits at the top of the right column when the client has a current or future workout plan. `ClientDashboardViewModel.WorkoutPlan`/`DietPlan`/`TodaysExercises` were replaced by `Plan`; the "Calories today" tile reads the target from `Plan.DietPlan`.
+- **Workout log page:** "Today's workout" above the form and "Coming up" below it (only when the client has a plan).
+- **Meal log page:** "Today's meals" above the form (only when the client has a current or upcoming diet plan).
+
+### Verified
+- Built with no warnings. Ran on port 5299 and scripted an end-to-end test (24 checks, all passing): admin created a trainer and client and assigned them; the trainer created a workout plan (Squats on Friday with minutes, Plank any day without minutes, Bench press on Monday), a second plan starting 27 Oct and a diet plan with two meals. As the client: correct Log/Log… buttons, Coming up shows Monday's Bench press and the new plan's Rowing, logging Squats returns to the dashboard and shows Logged, a repeat log adds nothing, an external returnUrl is ignored, Plank redirects to the pre-filled form, both meals log from the meal page, pre-fill works for meals, unknown IDs and another client's exercise give 404, and a client without plans still sees the empty states.
+- **Cleanup:** deleted the two test client accounts. The test trainer `plantesttrainer754819@example.com` ("Plan Trainer") is still there, since admins can only delete client accounts.
+
 ## 2026-10-23 — Clients can rate past appointments the provider never marked as completed
 
 Commit: not committed yet

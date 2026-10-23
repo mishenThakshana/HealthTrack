@@ -1,0 +1,42 @@
+@using HealthTrack.Controllers
+@model PlanScheduleViewModel
+
+<div class="ht-panel mb-3">
+    <div class="ht-panel-header">
+        <h2 class="h6 mb-0"><i class="bi bi-calendar-week"></i> Coming up</h2>
+        <span class="small text-muted">Next @PlanSchedule.UpcomingDays days</span>
+    </div>
+    @if (Model.UpcomingWorkouts.Count == 0)
+    {
+        <partial name="_EmptyState" model='new EmptyState("bi-calendar", "No workouts scheduled for the coming days.")' />
+    }
+    else
+    {
+        <ul class="list-unstyled ht-item-list mb-0">
+            @foreach (var day in Model.UpcomingWorkouts)
+            {
+                <li>
+                    <div class="ht-date-chip"><span>@day.Date.ToString("ddd")</span><strong>@day.Date.Day</strong></div>
+                    <div class="flex-grow-1 ht-min-w-0">
+                        @if (day.Exercises.Count == 0)
+                        {
+                            <div class="text-muted">Rest day</div>
+                        }
+                        else
+                        {
+                            <div class="fw-semibold">@string.Join(", ", day.Exercises.Select(e => e.Name))</div>
+                        }
+                        @if (day.Plan.Id != Model.WorkoutPlan?.Id)
+                        {
+                            <div class="small text-muted">@day.Plan.Title</div>
+                        }
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+    @if (Model.NextWorkoutPlan is not null)
+    {
+        <p class="small text-muted mb-0 mt-2"><i class="bi bi-calendar-event"></i> New workout plan “@Model.NextWorkoutPlan.Title” starts @Model.NextWorkoutPlan.StartDate.ToString("ddd d MMM").</p>
+    }
+</div>

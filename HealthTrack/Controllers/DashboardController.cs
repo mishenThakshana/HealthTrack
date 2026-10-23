@@ -16,7 +16,6 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
     {
         if (User.IsInRole(Roles.Admin)) return RedirectToAction(nameof(Admin));
         if (User.IsInRole(Roles.Trainer)) return RedirectToAction(nameof(Trainer));
-        if (User.IsInRole(Roles.Professional)) return RedirectToAction(nameof(Professional));
         if (User.IsInRole(Roles.Client)) return RedirectToAction(nameof(Client));
         return RedirectToAction("AccessDenied", "Account");
     }
@@ -58,12 +57,7 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
             WorkoutsThisWeek = await weekWorkouts.CountAsync(),
             MinutesThisWeek = await weekWorkouts.SumAsync(l => l.DurationMinutes),
             CaloriesToday = await db.MealLogs.Where(l => l.ClientId == user.Id && l.Date == today).SumAsync(l => l.Calories ?? 0),
-            WorkoutPlan = await db.WorkoutPlans.Include(p => p.Exercises).Include(p => p.Trainer)
-                .Where(p => p.ClientId == user.Id && p.IsActive && p.StartDate <= today)
-                .OrderByDescending(p => p.StartDate).FirstOrDefaultAsync(),
-            DietPlan = await db.DietPlans.Include(p => p.Meals).Include(p => p.Trainer)
-                .Where(p => p.ClientId == user.Id && p.IsActive && p.StartDate <= today)
-                .OrderByDescending(p => p.StartDate).FirstOrDefaultAsync(),
+            Plan = await PlanSchedule.ForClientAsync(db, user.Id),
             RecentWorkouts = await db.WorkoutLogs.Where(l => l.ClientId == user.Id)
                 .OrderByDescending(l => l.Date).ThenByDescending(l => l.Id).Take(5).ToListAsync(),
             UpcomingAppointments = await db.Appointments.Include(a => a.Trainer)
@@ -106,40 +100,6 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
             AppointmentRequests = await db.Appointments.Include(a => a.Client)
                 .Where(a => a.TrainerId == user.Id && a.Status == AppointmentStatus.Pending && a.StartsAt > now)
                 .OrderBy(a => a.StartsAt).Take(5).ToListAsync()
-        });
-    }
-
-    [Authorize(Roles = Roles.Professional)]
-    public async Task<IActionResult> Professional()
-    {
-        var user = await userManager.GetUserAsync(User);
-        if (user is null)
-            return Challenge();
-        await db.Entry(user).Reference(u => u.ProfessionalProfile).LoadAsync();
-
-        var now = DateTime.Now;
-        var tomorrow = DateTime.Today.AddDays(1);
-        var monthStart = new DateTime(now.Year, now.Month, 1);
-        var mine = db.Appointments.Include(a => a.Client).Where(a => a.TrainerId == user.Id);
-
-        return View(new ProfessionalDashboardViewModel
-        {
-            Profile = ToProfile(user, rating: await RatingOfAsync(user.Id)),
-            TodaysAppointments = await mine
-                .Where(a => (a.Status == AppointmentStatus.Approved || a.Status == AppointmentStatus.Completed)
-                    && a.StartsAt >= DateTime.Today && a.StartsAt < tomorrow)
-                .OrderBy(a => a.StartsAt).ToListAsync(),
-            AppointmentRequests = await mine.Where(a => a.Status == AppointmentStatus.Pending && a.StartsAt > now)
-                .OrderBy(a => a.StartsAt).Take(5).ToListAsync(),
-            Upcoming = await mine.Where(a => a.Status == AppointmentStatus.Approved && a.StartsAt >= tomorrow)
-                .OrderBy(a => a.StartsAt).Take(5).ToListAsync(),
-            PendingCount = await mine.CountAsync(a => a.Status == AppointmentStatus.Pending && a.StartsAt > now),
-            CompletedThisMonth = await mine.CountAsync(a => a.Status == AppointmentStatus.Completed && a.StartsAt >= monthStart),
-            ClientsSeen = await mine.Where(a => a.Status == AppointmentStatus.Completed).Select(a => a.ClientId).Distinct().CountAsync(),
-            ChosenBy = (await db.UsersInRole(Roles.Client).Where(u => u.ProfessionalId == user.Id).OrderBy(u => u.FullName)
-                    .Select(u => new { u.Id, u.FullName, u.PhotoUpdatedAt, u.Email, u.DateOfBirth }).ToListAsync())
-                .Select(u => new ChosenByClient(new Avatar(u.Id, u.FullName, u.PhotoUpdatedAt, "ht-avatar-md"), u.Email ?? string.Empty, Dates.Age(u.DateOfBirth)))
-                .ToList()
         });
     }
 
@@ -206,7 +166,6 @@ public class DashboardController(ApplicationDbContext db, UserManager<Applicatio
             TotalUsers = await db.Users.CountAsync(),
             Clients = roleCounts.GetValueOrDefault(Roles.Client),
             Trainers = roleCounts.GetValueOrDefault(Roles.Trainer),
-            Professionals = roleCounts.GetValueOrDefault(Roles.Professional),
             ActiveThisWeek = await db.Users.CountAsync(u => u.LastLoginAt >= weekAgo),
             Usage = usage,
             UsageTotals = usageTotals,

@@ -1,3 +1,5 @@
+using HealthTrack.Helpers;
+
 namespace HealthTrack.Models.ViewModels;
 
 public record ClientReportRow(
@@ -12,6 +14,8 @@ public record StatusCount(string Status, int Count);
 public class ReportsViewModel
 {
     public int Days { get; init; }
+    public required DateRange Range { get; init; }
+    public string? RangeError { get; init; }
     public bool IsAdmin { get; init; }
     public int TotalClients { get; init; }
     public int ActiveClients { get; init; }

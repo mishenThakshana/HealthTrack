@@ -1,0 +1,53 @@
+@model PlanScheduleViewModel
+@{
+    var returnUrl = ViewData["ReturnUrl"] as string;
+}
+
+<div class="ht-panel mb-3">
+    <div class="ht-panel-header">
+        <h2 class="h6 mb-0"><i class="bi bi-egg-fried"></i> Today's meals</h2>
+        @if (Model.DietPlan is not null)
+        {
+            <a class="small" asp-controller="DietPlans" asp-action="Details" asp-route-id="@Model.DietPlan.Id">@Model.DietPlan.Title <i class="bi bi-chevron-right"></i></a>
+        }
+    </div>
+    @if (Model.Meals.Count == 0)
+    {
+        <partial name="_EmptyState" model='new EmptyState("bi-basket", "No diet schedule has been set for you yet.")' />
+    }
+    else
+    {
+        <ul class="list-unstyled ht-item-list mb-0">
+            @foreach (var (meal, logged) in Model.Meals)
+            {
+                <li>
+                    <span class="badge rounded-pill bg-primary-subtle text-primary ht-meal-badge">@meal.MealType</span>
+                    <div class="flex-grow-1 ht-min-w-0">
+                        <div>@meal.Description</div>
+                        @if (meal.Calories is not null) { <div class="small text-muted">@meal.Calories kcal</div> }
+                    </div>
+                    @if (logged)
+                    {
+                        <span class="badge rounded-pill bg-success-subtle text-success"><i class="bi bi-check2"></i> Logged</span>
+                    }
+                    else
+                    {
+                        <a class="btn btn-sm btn-link p-0 ht-icon-btn" asp-controller="MealLogs" asp-action="Index" asp-route-meal="@meal.Id"
+                           title="Adjust before logging" aria-label="Adjust your @meal.MealType.ToString().ToLowerInvariant() before logging"><i class="bi bi-pencil"></i></a>
+                        <form asp-controller="MealLogs" asp-action="LogPlanned" method="post" class="d-inline">
+                            <input type="hidden" name="mealId" value="@meal.Id" />
+                            <input type="hidden" name="returnUrl" value="@returnUrl" />
+                            <button type="submit" class="btn btn-sm btn-primary text-nowrap" aria-label="Log your @meal.MealType.ToString().ToLowerInvariant() as eaten today">
+                                <i class="bi bi-check-lg"></i> Log
+                            </button>
+                        </form>
+                    }
+                </li>
+            }
+        </ul>
+    }
+    @if (Model.NextDietPlan is not null)
+    {
+        <p class="small text-muted mb-0 mt-2"><i class="bi bi-calendar-event"></i> New diet plan “@Model.NextDietPlan.Title” starts @Model.NextDietPlan.StartDate.ToString("ddd d MMM").</p>
+    }
+</div>

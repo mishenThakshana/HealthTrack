@@ -10,8 +10,7 @@ public static class DbSeeder
         string Email, string Password, string FullName, string Role,
         DateOnly? DateOfBirth = null, string? Gender = null, string? TrainerEmail = null,
         string? FitnessGoal = null, string? ActivityLevel = null, string? HealthConditions = null,
-        string? Specialization = null, string[]? Qualifications = null,
-        string? Profession = null, string? RegistrationNumber = null, string? Workplace = null, int YearsOfExperience = 0);
+        string? Specialization = null, string[]? Qualifications = null, int YearsOfExperience = 0);
 
     public static async Task SeedAsync(IServiceProvider services)
     {
@@ -58,12 +57,6 @@ public static class DbSeeder
             {
                 UserId = user.Id, Specialization = specialization, YearsOfExperience = seed.YearsOfExperience,
                 Qualifications = qualifications.Select(q => new TrainerQualification { Name = q }).ToList()
-            });
-        else if (seed.Role == Roles.Professional && seed is { Profession: { } profession, RegistrationNumber: { } number }
-            && !await db.ProfessionalProfiles.AnyAsync(p => p.UserId == user.Id))
-            db.ProfessionalProfiles.Add(new ProfessionalProfile
-            {
-                UserId = user.Id, Profession = profession, RegistrationNumber = number, Workplace = seed.Workplace, YearsOfExperience = seed.YearsOfExperience
             });
         else
             return;

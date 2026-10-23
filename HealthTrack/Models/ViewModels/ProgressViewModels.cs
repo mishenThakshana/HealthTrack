@@ -1,3 +1,4 @@
+using HealthTrack.Helpers;
 using System.ComponentModel.DataAnnotations;
 
 namespace HealthTrack.Models.ViewModels;
@@ -21,6 +22,8 @@ public class ProgressViewModel
     public bool CanGiveFeedback { get; init; }
     public string CurrentUserId { get; init; } = string.Empty;
     public int Days { get; init; }
+    public required DateRange Range { get; init; }
+    public string? RangeError { get; init; }
 
     public decimal? CurrentWeight { get; init; }
     public decimal? WeightChange { get; init; }

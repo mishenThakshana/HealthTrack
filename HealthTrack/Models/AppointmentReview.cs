@@ -14,7 +14,7 @@ public class AppointmentReview
     public string ClientId { get; set; } = string.Empty;
     public ApplicationUser? Client { get; set; }
 
-    // The trainer or health professional the appointment was with.
+    // The trainer the appointment was with.
     [Required]
     public string ProviderId { get; set; } = string.Empty;
     public ApplicationUser? Provider { get; set; }

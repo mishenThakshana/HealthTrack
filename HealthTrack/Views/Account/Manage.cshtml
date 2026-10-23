@@ -14,7 +14,6 @@
             <p class="text-muted mb-0">
                 Member since @Model.MemberSince.ToLocalTime().ToString("d MMM yyyy")
                 @if (Model.TrainerName is not null) { <span> · your trainer is @Model.TrainerName</span> }
-                @if (Model.ProfessionalName is not null) { <span> · your health professional is @Model.ProfessionalName</span> }
             </p>
         </div>
     </div>
@@ -35,8 +34,8 @@
                         <div class="form-text">
                             JPG, PNG or WebP, up to 2 MB. Square pictures look best.
                             @(Model.IsClient
-                                ? "Only you, your trainer and the health professionals you see can view it."
-                                : Model.RoleKey == Roles.Admin ? "Only administrators can view it." : "Clients see it when they browse trainers and health professionals.")
+                                ? "Only you and your trainer can view it."
+                                : Model.RoleKey == Roles.Admin ? "Only administrators can view it." : "Clients see it when they browse trainers.")
                         </div>
                         @if (Model.Avatar.PhotoUpdatedAt is not null)
                         {
@@ -100,73 +99,33 @@
                 </form>
             </div>
 
-            @if (Model.RoleKey is Roles.Trainer or Roles.Professional)
+            @if (Model.RoleKey == Roles.Trainer)
             {
-                var (icon, heading) = Model.RoleKey switch
-                {
-                    Roles.Trainer => ("bi-person-badge", "About your coaching"),
-                    _ => ("bi-hospital", "About your practice")
-                };
                 <div class="ht-panel mt-3" id="details">
                     <div class="ht-panel-header">
-                        <h2 class="h6 mb-0"><i class="bi @icon"></i> @heading</h2>
+                        <h2 class="h6 mb-0"><i class="bi bi-person-badge"></i> About your coaching</h2>
                     </div>
                     <form asp-action="UpdateDetails" method="post" novalidate>
-                        @if (Model.RoleKey == Roles.Trainer)
-                        {
-                            <div class="row g-2 mb-3">
-                                <div class="col-sm-8">
-                                    <label asp-for="Trainer.Specialization" class="form-label"></label>
-                                    <select asp-for="Trainer.Specialization" asp-items="@(new SelectList(ProfileOptions.Specializations))" class="form-select">
-                                        <option value="">Select</option>
-                                    </select>
-                                    <span asp-validation-for="Trainer.Specialization" class="text-danger small"></span>
-                                </div>
-                                <div class="col-sm-4">
-                                    <label asp-for="Trainer.YearsOfExperience" class="form-label"></label>
-                                    <div class="input-group">
-                                        <input asp-for="Trainer.YearsOfExperience" type="number" min="0" max="60" class="form-control" />
-                                        <span class="input-group-text">years</span>
-                                    </div>
-                                    <span asp-validation-for="Trainer.YearsOfExperience" class="text-danger small"></span>
-                                </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-sm-8">
+                                <label asp-for="Trainer.Specialization" class="form-label"></label>
+                                <select asp-for="Trainer.Specialization" asp-items="@(new SelectList(ProfileOptions.Specializations))" class="form-select">
+                                    <option value="">Select</option>
+                                </select>
+                                <span asp-validation-for="Trainer.Specialization" class="text-danger small"></span>
                             </div>
-                            <div class="mb-3">
-                                <partial name="_QualificationsField" for="Trainer" />
+                            <div class="col-sm-4">
+                                <label asp-for="Trainer.YearsOfExperience" class="form-label"></label>
+                                <div class="input-group">
+                                    <input asp-for="Trainer.YearsOfExperience" type="number" min="0" max="60" class="form-control" />
+                                    <span class="input-group-text">years</span>
+                                </div>
+                                <span asp-validation-for="Trainer.YearsOfExperience" class="text-danger small"></span>
                             </div>
-                        }
-                        else
-                        {
-                            <div class="row g-2 mb-3">
-                                <div class="col-sm-8">
-                                    <label asp-for="Professional.Profession" class="form-label"></label>
-                                    <select asp-for="Professional.Profession" asp-items="@(new SelectList(ProfileOptions.Professions))" class="form-select">
-                                        <option value="">Select</option>
-                                    </select>
-                                    <span asp-validation-for="Professional.Profession" class="text-danger small"></span>
-                                </div>
-                                <div class="col-sm-4">
-                                    <label asp-for="Professional.YearsOfExperience" class="form-label"></label>
-                                    <div class="input-group">
-                                        <input asp-for="Professional.YearsOfExperience" type="number" min="0" max="60" class="form-control" />
-                                        <span class="input-group-text">years</span>
-                                    </div>
-                                    <span asp-validation-for="Professional.YearsOfExperience" class="text-danger small"></span>
-                                </div>
-                            </div>
-                            <div class="row g-2 mb-3">
-                                <div class="col-sm-6">
-                                    <label asp-for="Professional.RegistrationNumber" class="form-label"></label>
-                                    <input asp-for="Professional.RegistrationNumber" class="form-control" maxlength="50" />
-                                    <span asp-validation-for="Professional.RegistrationNumber" class="text-danger small"></span>
-                                </div>
-                                <div class="col-sm-6">
-                                    <label asp-for="Professional.Workplace" class="form-label"></label>
-                                    <input asp-for="Professional.Workplace" class="form-control" maxlength="100" />
-                                    <span asp-validation-for="Professional.Workplace" class="text-danger small"></span>
-                                </div>
-                            </div>
-                        }
+                        </div>
+                        <div class="mb-3">
+                            <partial name="_QualificationsField" for="Trainer" />
+                        </div>
                         <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save details</button>
                     </form>
                 </div>
@@ -235,7 +194,7 @@
                             <input type="hidden" asp-for="Notifications.EmailReminders" />
                             <input type="hidden" asp-for="Notifications.RemindWorkouts" />
                             <input type="hidden" asp-for="Notifications.RemindMeals" />
-                            @if (User.IsInRole(HealthTrack.Data.Roles.Trainer) || User.IsInRole(HealthTrack.Data.Roles.Professional))
+                            @if (User.IsInRole(HealthTrack.Data.Roles.Trainer))
                             {
                                 <div class="form-check form-switch mb-3">
                                     <input asp-for="Notifications.EmailUpdates" class="form-check-input" role="switch" />
@@ -264,10 +223,13 @@
                     <a class="small" asp-controller="Home" asp-action="Privacy">Privacy policy <i class="bi bi-chevron-right"></i></a>
                 </div>
                 <div class="row g-4">
-                    <div class="col-lg-5">
-                        <p class="small text-muted mb-2">Download a copy of everything HealthTrack stores about you, as a JSON file.</p>
-                        <a class="btn btn-outline-primary" asp-action="DownloadData"><i class="bi bi-download"></i> Download my data</a>
-                    </div>
+                    @if (Model.IsClient)
+                    {
+                        <div class="col-lg-5">
+                            <p class="small text-muted mb-2">Download your progress report, with your measurements, workouts and meals, as an Excel or PDF file.</p>
+                            <a class="btn btn-outline-primary" asp-controller="Progress" asp-action="Index"><i class="bi bi-download"></i> Export my report</a>
+                        </div>
+                    }
                     <div class="col-lg-7">
                         @if (Model.IsClient)
                         {

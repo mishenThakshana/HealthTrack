@@ -12,7 +12,6 @@ internal static class RoleProfiles
 {
     public const string ClientPrefix = "Client";
     public const string TrainerPrefix = "Trainer";
-    public const string ProfessionalPrefix = "Professional";
     public const int MaxQualifications = 10;
 
     public static List<string> CleanQualifications(IEnumerable<string?> values) =>
@@ -20,9 +19,9 @@ internal static class RoleProfiles
 
     // Only the section for the chosen role is validated; the others are ignored.
     public static void Validate(ModelStateDictionary modelState, string role,
-        ClientProfileFormViewModel client, TrainerProfileFormViewModel trainer, ProfessionalProfileFormViewModel professional)
+        ClientProfileFormViewModel client, TrainerProfileFormViewModel trainer)
     {
-        foreach (var (prefix, owner) in new[] { (ClientPrefix, Roles.Client), (TrainerPrefix, Roles.Trainer), (ProfessionalPrefix, Roles.Professional) })
+        foreach (var (prefix, owner) in new[] { (ClientPrefix, Roles.Client), (TrainerPrefix, Roles.Trainer) })
         {
             if (owner != role)
                 RemovePrefix(modelState, prefix);
@@ -45,8 +44,6 @@ internal static class RoleProfiles
             else if (qualifications.Any(q => q.Length is < 2 or > 100))
                 modelState.AddModelError(key, "Each qualification needs 2 to 100 characters.");
         }
-        else if (role == Roles.Professional)
-            Check(modelState, $"{ProfessionalPrefix}.{nameof(professional.Profession)}", professional.Profession, ProfileOptions.Professions);
     }
 
     public static void RemovePrefix(ModelStateDictionary modelState, string prefix)
@@ -57,7 +54,7 @@ internal static class RoleProfiles
 
     // Call after the user exists; the caller saves the changes.
     public static async Task ApplyAsync(ApplicationDbContext db, string userId, string role,
-        ClientProfileFormViewModel client, TrainerProfileFormViewModel trainer, ProfessionalProfileFormViewModel professional)
+        ClientProfileFormViewModel client, TrainerProfileFormViewModel trainer)
     {
         if (role == Roles.Client)
         {
@@ -77,15 +74,6 @@ internal static class RoleProfiles
             profile.Qualifications.AddRange(CleanQualifications(trainer.Qualifications).Select(q => new TrainerQualification { Name = q }));
             profile.UpdatedAt = DateTime.UtcNow;
         }
-        else if (role == Roles.Professional)
-        {
-            var profile = await db.ProfessionalProfiles.FirstOrDefaultAsync(p => p.UserId == userId) ?? db.ProfessionalProfiles.Add(new ProfessionalProfile { UserId = userId }).Entity;
-            profile.Profession = professional.Profession!;
-            profile.RegistrationNumber = professional.RegistrationNumber!.Trim();
-            profile.Workplace = TrackingRules.Clean(professional.Workplace);
-            profile.YearsOfExperience = professional.YearsOfExperience!.Value;
-            profile.UpdatedAt = DateTime.UtcNow;
-        }
     }
 
     // Removes details kept for roles the user no longer has, for example after an admin changes their role.
@@ -95,11 +83,9 @@ internal static class RoleProfiles
             await db.ClientProfiles.Where(p => p.UserId == userId).ExecuteDeleteAsync();
         if (role != Roles.Trainer)
             await db.TrainerProfiles.Where(p => p.UserId == userId).ExecuteDeleteAsync();
-        if (role != Roles.Professional)
-            await db.ProfessionalProfiles.Where(p => p.UserId == userId).ExecuteDeleteAsync();
     }
 
-    public static async Task<(ClientProfileFormViewModel, TrainerProfileFormViewModel, ProfessionalProfileFormViewModel)> LoadFormsAsync(
+    public static async Task<(ClientProfileFormViewModel, TrainerProfileFormViewModel)> LoadFormsAsync(
         ApplicationDbContext db, string userId) =>
     (
         await db.ClientProfiles.Where(p => p.UserId == userId)
@@ -111,12 +97,6 @@ internal static class RoleProfiles
                 Specialization = p.Specialization,
                 YearsOfExperience = p.YearsOfExperience,
                 Qualifications = p.Qualifications.OrderBy(q => q.Id).Select(q => (string?)q.Name).ToList()
-            })
-            .FirstOrDefaultAsync() ?? new(),
-        await db.ProfessionalProfiles.Where(p => p.UserId == userId)
-            .Select(p => new ProfessionalProfileFormViewModel
-            {
-                Profession = p.Profession, RegistrationNumber = p.RegistrationNumber, Workplace = p.Workplace, YearsOfExperience = p.YearsOfExperience
             })
             .FirstOrDefaultAsync() ?? new()
     );

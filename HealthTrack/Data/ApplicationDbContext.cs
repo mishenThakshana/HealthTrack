@@ -35,7 +35,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<ClientProfile> ClientProfiles => Set<ClientProfile>();
     public DbSet<TrainerProfile> TrainerProfiles => Set<TrainerProfile>();
     public DbSet<TrainerQualification> TrainerQualifications => Set<TrainerQualification>();
-    public DbSet<ProfessionalProfile> ProfessionalProfiles => Set<ProfessionalProfile>();
     public DbSet<ProfilePhoto> ProfilePhotos => Set<ProfilePhoto>();
     public DbSet<AppointmentReview> AppointmentReviews => Set<AppointmentReview>();
 
@@ -50,12 +49,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasOne(u => u.Trainer)
             .WithMany()
             .HasForeignKey(u => u.TrainerId)
-            .OnDelete(DeleteBehavior.NoAction);
-
-        builder.Entity<ApplicationUser>()
-            .HasOne(u => u.Professional)
-            .WithMany()
-            .HasForeignKey(u => u.ProfessionalId)
             .OnDelete(DeleteBehavior.NoAction);
 
         builder.Entity<ProfilePhoto>().HasOne(p => p.User).WithOne()
@@ -77,8 +70,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasForeignKey<TrainerProfile>(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<TrainerProfile>().HasMany(p => p.Qualifications).WithOne(q => q.TrainerProfile)
             .HasForeignKey(q => q.TrainerProfileId).OnDelete(DeleteBehavior.Cascade);
-        builder.Entity<ProfessionalProfile>().HasOne(p => p.User).WithOne(u => u.ProfessionalProfile)
-            .HasForeignKey<ProfessionalProfile>(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
 
         builder.Entity<Notification>(n =>
         {

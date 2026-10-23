@@ -2,7 +2,7 @@
 @{
     ViewData["Title"] = "Dashboard";
     var latest = Model.LatestMeasurement;
-    var todays = Model.TodaysExercises.ToList();
+    var planView = new ViewDataDictionary(ViewData) { ["ReturnUrl"] = Url.Action("Client", "Dashboard") };
 }
 
 <div class="container py-4">
@@ -26,71 +26,13 @@
         <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-speedometer2", "Current weight", latest is null ? "—" : $"{latest.WeightKg:0.0} kg", latest is null ? "No measurements yet" : $"on {latest.Date:d MMM}")' /></div>
         <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-heart-pulse", "BMI", Model.Bmi?.ToString("0.0") ?? "—", Model.Bmi is { } b ? HealthTrack.Helpers.Bmi.Category(b) : "Add weight and height")' /></div>
         <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-activity", "Workouts this week", Model.WorkoutsThisWeek.ToString(), $"{Model.MinutesThisWeek} min total")' /></div>
-        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-fire", "Calories today", Model.CaloriesToday.ToString("N0"), Model.DietPlan?.DailyCalorieTarget is { } t ? $"Target {t:N0} kcal" : "From your meal log")' /></div>
+        <div class="col-6 col-lg-3"><partial name="_StatTile" model='new StatTile("bi-fire", "Calories today", Model.CaloriesToday.ToString("N0"), Model.Plan.DietPlan?.DailyCalorieTarget is { } t ? $"Target {t:N0} kcal" : "From your meal log")' /></div>
     </div>
 
     <div class="row g-3">
         <div class="col-lg-8">
-            <div class="ht-panel mb-3">
-                <div class="ht-panel-header">
-                    <h2 class="h6 mb-0"><i class="bi bi-activity"></i> Today's workout</h2>
-                    @if (Model.WorkoutPlan is not null)
-                    {
-                        <a class="small" asp-controller="WorkoutPlans" asp-action="Details" asp-route-id="@Model.WorkoutPlan.Id">@Model.WorkoutPlan.Title <i class="bi bi-chevron-right"></i></a>
-                    }
-                </div>
-                @if (Model.WorkoutPlan is null)
-                {
-                    <partial name="_EmptyState" model='new EmptyState("bi-clipboard", "Your trainer hasn’t assigned a workout plan yet.")' />
-                }
-                else if (todays.Count == 0)
-                {
-                    <partial name="_EmptyState" model='new EmptyState("bi-cup-hot", "Rest day — nothing scheduled for today.")' />
-                }
-                else
-                {
-                    <ul class="list-unstyled ht-item-list mb-0">
-                        @foreach (var e in todays)
-                        {
-                            <li>
-                                <div class="flex-grow-1">
-                                    <div class="fw-semibold">@e.Name</div>
-                                    <div class="small text-muted">
-                                        @(e.Sets is not null || e.Reps is not null ? $"{e.Sets ?? 1} × {e.Reps?.ToString() ?? "–"} reps" : "")@(e.DurationMinutes is { } d ? $"{(e.Sets is not null || e.Reps is not null ? " · " : "")}{d} min" : "")
-                                    </div>
-                                </div>
-                            </li>
-                        }
-                    </ul>
-                }
-            </div>
-
-            <div class="ht-panel mb-3">
-                <div class="ht-panel-header">
-                    <h2 class="h6 mb-0"><i class="bi bi-egg-fried"></i> Diet schedule</h2>
-                    @if (Model.DietPlan is not null)
-                    {
-                        <a class="small" asp-controller="DietPlans" asp-action="Details" asp-route-id="@Model.DietPlan.Id">@Model.DietPlan.Title <i class="bi bi-chevron-right"></i></a>
-                    }
-                </div>
-                @if (Model.DietPlan is null || Model.DietPlan.Meals.Count == 0)
-                {
-                    <partial name="_EmptyState" model='new EmptyState("bi-basket", "No diet schedule has been set for you yet.")' />
-                }
-                else
-                {
-                    <ul class="list-unstyled ht-item-list mb-0">
-                        @foreach (var meal in Model.DietPlan.Meals.OrderBy(m => m.MealType).ThenBy(m => m.Id))
-                        {
-                            <li>
-                                <span class="badge rounded-pill bg-primary-subtle text-primary ht-meal-badge">@meal.MealType</span>
-                                <div class="flex-grow-1">@meal.Description</div>
-                                @if (meal.Calories is not null) { <span class="small text-muted text-nowrap">@meal.Calories kcal</span> }
-                            </li>
-                        }
-                    </ul>
-                }
-            </div>
+            <partial name="_TodaysWorkout" model="Model.Plan" view-data="planView" />
+            <partial name="_TodaysMeals" model="Model.Plan" view-data="planView" />
 
             <div class="ht-panel">
                 <div class="ht-panel-header">
@@ -119,6 +61,10 @@
             </div>
         </div>
         <div class="col-lg-4">
+            @if (Model.Plan.WorkoutPlan is not null || Model.Plan.NextWorkoutPlan is not null)
+            {
+                <partial name="_UpcomingWorkouts" model="Model.Plan" />
+            }
             <div class="ht-panel mb-3">
                 <div class="ht-panel-header">
                     <h2 class="h6 mb-0"><i class="bi bi-calendar-check"></i> Upcoming appointments</h2>

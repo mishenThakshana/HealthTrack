@@ -25,7 +25,7 @@ HealthTrack is a digital platform designed to help individuals track and improve
 - Clients can log workouts, meals, and health measurements.
 
 ### Appointment System
-- Clients can schedule consultations with trainers or healthcare professionals.
+- Clients can schedule consultations with trainers or healthcare professionals. (HealthTrack has three account types, as the brief lists: clients, trainers and administrators. Health-focused consultations are booked with trainers whose specialization covers them, for example Nutrition and diet or Injury recovery.)
 - Trainers can approve, update, or cancel appointments.
 - Administrators can manage every appointment.
 
@@ -50,6 +50,7 @@ HealthTrack is a digital platform designed to help individuals track and improve
 | Authentication | ASP.NET Core Identity |
 | Email | MailKit over SMTP (Mailpit in development) |
 | Charts | Chart.js 4.4.1 (served from `wwwroot/lib`) |
+| Report exports | ClosedXML (Excel) and QuestPDF (PDF, Community licence) |
 | Frontend | Razor Views, Bootstrap, jQuery |
 
 ## Prerequisites
@@ -160,7 +161,7 @@ In Development, this account is created on startup if it doesn't already exist. 
 |------|-------|----------|------|
 | Admin | `admin@healthtrack.local` | `Admin@12345` | System Administrator |
 
-Clients, trainers and health professionals sign up through the Register page. You can add more seed accounts to `SeedUsers`. Each entry takes `Email`, `Password`, `FullName` and `Role`, plus the optional details they'd enter at registration (for example `TrainerEmail`, `FitnessGoal`, `Specialization` and `Qualifications`).
+Clients and trainers sign up through the Register page. You can add more seed accounts to `SeedUsers`. Each entry takes `Email`, `Password`, `FullName` and `Role`, plus the optional details they'd enter at registration (for example `TrainerEmail`, `FitnessGoal`, `Specialization` and `Qualifications`).
 
 These are for local development only. Don't use them in production.
 
@@ -169,19 +170,17 @@ These are for local development only. Don't use them in production.
 - **Everyone:** full name, email, gender (Male or Female), password, and accepting the privacy policy. Admins can't register themselves and don't have a gender.
 - **Clients** also give their date of birth. They don't fill in a role details section: their health data comes from what they log (measurements, workouts and meals). Older accounts may still hold a main goal, activity level and health conditions (encrypted); these show on the profile card but can no longer be edited.
 - **Trainers** give their specialization, years of experience and one or more qualifications ("Add another qualification", up to 10; stored one per row in `TrainerQualifications`).
-- **Health professionals** give their profession, registration or licence number, years of experience and workplace (optional).
 - The page only shows the section for the chosen account type. The other sections aren't validated or saved.
-- The details are stored in `ClientProfiles`, `TrainerProfiles` and `ProfessionalProfiles`. Each table has a one-to-one link to `AspNetUsers` (a unique `UserId`), and its row is deleted with the user. `TrainerQualifications` is one-to-many from `TrainerProfiles`.
+- The details are stored in `ClientProfiles` and `TrainerProfiles`. Each table has a one-to-one link to `AspNetUsers` (a unique `UserId`), and its row is deleted with the user. `TrainerQualifications` is one-to-many from `TrainerProfiles`.
 - **Where they're used:**
   - Dashboards' profile cards.
   - The booking list ("Alex Morgan — Strength and muscle").
   - The appointment page.
-  - The client's details for their trainer and health professionals (Clients and Progress pages).
-  - The admin's user page shows trainers' and professionals' details; client health details stay private.
-  - The data export.
+  - The client's details for their trainer (Clients and Progress pages).
+  - The admin's user page shows trainers' details; client health details stay private.
 - **Editing and missing details:**
-  - Trainers and health professionals edit their details under **My account**.
-  - New trainers and professionals, accounts created by an admin, and accounts whose role an admin changes are asked to add the details on their dashboard.
+  - Trainers edit their details under **My account**.
+  - New trainers, accounts created by an admin, and accounts whose role an admin changes are asked to add the details on their dashboard.
   - A role change removes the details kept for the old role.
 
 ## Profile pictures
@@ -189,45 +188,49 @@ These are for local development only. Don't use them in production.
 - Everyone can upload, replace or remove a profile picture under **My account → Profile picture**. JPG, PNG or WebP, up to 2 MB.
 - The file type is worked out from the file's first bytes, not from its name or the browser's Content-Type, so a renamed file is rejected. Uploads need the anti-forgery token, and requests over the size limit are refused.
 - Pictures are stored in the `ProfilePhotos` table (one row per user, deleted with the user) and served by `/ProfilePhotos/Show/{id}?v=…`. `AspNetUsers.PhotoUpdatedAt` records when it last changed: it tells views whether to show the picture or the person's initials, and changes the URL so browsers fetch the new picture.
-- **Who can see them:** trainers' and health professionals' pictures are visible to anyone signed in, so clients can browse them. A client's picture is only visible to the client, admins, their trainer, their chosen health professional, and providers they have appointments with. Anyone else gets a 404.
-- Pictures show in the navbar, trainer and professional dashboard profile cards, Find experts and provider profiles, the trainer's client list and client page, and the admin user list.
+- **Who can see them:** trainers' pictures are visible to anyone signed in, so clients can browse them. A client's picture is only visible to the client, admins, their trainer, and trainers they have appointments with. Anyone else gets a 404.
+- Pictures show in the navbar, the trainer dashboard profile card, Find a trainer and trainer profiles, the trainer's client list and client page, and the admin user list.
 - `profile-pictures/` in the repository root has sample CC0 and public-domain pictures for each role (see its `CREDITS.md`).
 
-## Find experts: choosing a trainer and health professional
+## Find a trainer
 
-- Clients open **Find experts** (`/Providers`) to browse trainers or health professionals. Each card shows the picture, specialization or profession, experience, qualifications, workplace, star rating and number of clients. Search by name, specialization, qualification, profession or workplace, filter by specialization or profession, and sort by name or top rated. Disabled accounts aren't listed.
-- Until a client has chosen both a trainer and a health professional, a banner on every page (except Find experts itself) says which one is missing and links to the matching Find experts tab.
-- Each trainer and professional has a profile page (`/Providers/Details/{id}`) with their details, rating summary and reviews. Clients and admins can open it, and so can the trainer or professional themselves (linked from their dashboard profile card as "Public profile"). Admins also get a "Profile & reviews" button on the user's page.
-- A client can choose one trainer and one health professional, switch to someone else (after confirming), or remove them. **Book** opens the Appointments page with that person preselected.
+- Clients open **Find a trainer** (`/Providers`) to browse trainers. Each card shows the picture, specialization, experience, qualifications, star rating and number of clients. Search by name, specialization or qualification, filter by specialization, and sort by name or top rated. Disabled accounts aren't listed.
+- Until a client has chosen a trainer, a banner on every page (except Find a trainer itself) links to Find a trainer.
+- Each trainer has a profile page (`/Providers/Details/{id}`) with their details, rating summary and reviews. Clients and admins can open it, and so can the trainer themselves (linked from their dashboard profile card as "Public profile"). Admins also get a "Profile & reviews" button on the user's page.
+- A client can choose one trainer, switch to someone else (after confirming), or remove them. **Book** opens the Appointments page with that trainer preselected.
 - Choosing a trainer sets the same `TrainerId` an admin sets on the Assignments page, so the trainer sees the client under Clients and can create plans for them. The admin Assignments page still works and shows these choices.
-- Choosing a health professional sets `AspNetUsers.ProfessionalId`. That professional can then open the client's Progress page and leave feedback, and sees the client under "Clients who chose you" on their dashboard. Removing them takes that access away.
-- The new trainer or professional is notified, and so is the one being replaced or removed (`TrainerAssigned`, `ProfessionalChosen` and `ClientLeft` notifications, emailed if they have "Clients choosing or leaving me" switched on).
-- If an admin changes a health professional's role, clients who chose them are unlinked.
+- The new trainer is notified, and so is the one being replaced or removed (`TrainerAssigned` and `ClientLeft` notifications, emailed if they have "Clients choosing or leaving me" switched on).
+
+## Logging from your plans
+
+- The client dashboard and the Workout log / Meal log pages show **Today's workout** and **Today's meals** from the client's active plans. Each item has a **Log** button that saves it to today's log in one click (exercise name, planned minutes and sets × reps; or meal type, description and calories), and a pencil that opens the log form pre-filled so it can be adjusted first. Exercises without planned minutes open the pre-filled form instead, because minutes are required.
+- Logged items show a green **Logged** badge and can't be logged twice from the plan. Only items scheduled today in the client's own active plan can be logged this way.
+- **Coming up** lists the next 6 days of the workout plan (exercises or "Rest day", and the plan's name when a different plan takes over) and says when a new workout or diet plan starts.
+- A plan counts as active from its start date until its end date (if any); when plans overlap, the one that started last is used.
 
 ## Ratings and reviews
 
 - After an appointment is marked as completed, or once an approved appointment has ended (even if the provider never marks it completed), the client can rate it from 1 to 5 stars and add optional feedback (up to 1,000 characters) on the appointment page. The completion notification and a "Rate your appointments" panel on the client dashboard point them there.
 - One review per appointment (unique index). Clients can edit or delete their own reviews; admins can delete any review from the provider's profile page. A database check constraint keeps ratings between 1 and 5.
 - Reviews are stored in `AppointmentReviews` (appointment, client, provider, rating, comment, dates). The comment is encrypted at rest like other free text, and reviews are deleted with their appointment, so deleting a client account removes them.
-- The trainer or professional is notified of each new review (`ReviewReceived`). They can read it on the appointment page.
-- Ratings show as stars (average and count) on Find experts cards, provider profiles and the provider's own dashboard profile card. Profiles also show the 5-to-1 star breakdown and the latest 50 reviews. Other clients see reviewers by first name and initial ("Omar S."); admins see full names.
-- Reviews are included in the data export: written ones for clients, received ones for trainers and professionals.
+- The trainer is notified of each new review (`ReviewReceived`). They can read it on the appointment page.
+- Ratings show as stars (average and count) on Find a trainer cards, trainer profiles and the trainer's own dashboard profile card. Profiles also show the 5-to-1 star breakdown and the latest 50 reviews. Other clients see reviewers by first name and initial ("Omar S."); admins see full names.
 
 ## Appointments
 
-- Clients request a consultation from the Appointments page by choosing a trainer or health professional (their assigned trainer is preselected), date, time, length (30, 45, 60 or 90 minutes), type (in person, video call or phone call) and what they'd like to discuss.
+- Clients request a consultation from the Appointments page by choosing a trainer (their assigned trainer is preselected), date, time, length (30, 45, 60 or 90 minutes), type (in person, video call or phone call) and what they'd like to discuss.
 - Appointments must start in the future, no more than 90 days ahead, and fit between 06:00 and 21:00.
 - A request can't overlap the trainer's approved appointments or the client's own pending or approved ones.
-- Trainers and health professionals approve or decline requests, reschedule them (which also confirms them), add a location or meeting link and a note, cancel approved ones, and mark past ones as completed.
-- Admins see every appointment on the Appointments page and can do everything a trainer can: approve, decline, reschedule, complete and cancel. Both the client and the trainer or professional are notified, and the change is shown as made by "An administrator".
+- Trainers approve or decline requests, reschedule them (which also confirms them), add a location or meeting link and a note, cancel approved ones, and mark past ones as completed.
+- Admins see every appointment on the Appointments page and can do everything a trainer can: approve, decline, reschedule, complete and cancel. Both the client and the trainer are notified, and the change is shown as made by "An administrator".
 - Clients can cancel their own pending or approved appointments before they start. Pending requests that are never answered show as "Expired" once their start time passes.
 - Times are stored in the server's local time.
 
 ## Progress tracking & analytics
 
-- **Progress** (`/Progress`): clients see charts of weight, BMI, body fat, resting heart rate, workout minutes, calories burned and calories eaten (against their diet plan's target) for the last 30 days, 90 days, 6 months or 12 months, plus their top activities. Each chart has a "Show data" table.
-- **Feedback**: a client's trainer, their chosen health professional, and health professionals with an approved or completed appointment with the client, can open the client's Progress page and leave feedback. Clients see it on their Progress page and dashboard. Authors can delete their own feedback.
-- **Reports** (`/Reports`, trainers and admins): client performance (workouts, minutes, calories, weight change, active days, engagement level), engagement over time, appointments by status, popular plan exercises and most logged activities. Trainers see their own clients; admins see everyone. Download as CSV.
+- **Progress** (`/Progress`): clients see charts of weight, BMI, body fat, resting heart rate, workout minutes, calories burned and calories eaten (against their diet plan's target) for the last 30 days, 90 days, 6 months or 12 months, or a custom date range (any dates up to today, at most 2 years long), plus their top activities. Each chart has a "Show data" table. **Excel** and **PDF** buttons download the progress report for the chosen period (preset or custom): the summary plus every measurement (with BMI), workout and meal, top activities and trainer feedback. Trainers can export the report of their own clients from the same page.
+- **Feedback**: a client's trainer can open the client's Progress page and leave feedback. Clients see it on their Progress page and dashboard. Authors can delete their own feedback.
+- **Reports** (`/Reports`, trainers and admins): client performance (workouts, minutes, calories, weight change, active days, engagement level), engagement over time, appointments by status, popular plan exercises and most logged activities, for a preset period or a custom date range. Trainers see their own clients; admins see everyone. **Excel** and **PDF** buttons download the whole report (summary plus one sheet or section per table).
 - **Admin dashboard**: active users this week, system usage over the last 14 days, totals, and each user's last sign-in.
 
 ## Emails and notifications
@@ -270,13 +273,13 @@ These are for local development only. Don't use them in production.
 - **Input validation:**
   - Server-side validation on every form (lengths, ranges, dates, enums, ownership checks).
   - Only local return URLs are followed.
-  - CSV exports escape spreadsheet formulas.
+  - Excel exports store every text value as text, so an entry like `=HYPERLINK(...)` is never run as a formula.
 - **Privacy:**
   - New accounts accept the [privacy policy](HealthTrack/Views/Home/Privacy.cshtml), and the time is recorded.
-  - Everyone can download their data as JSON from My account.
+  - Clients can export their progress report, with all their measurements, workouts and meals, as Excel or PDF (Progress page, linked from My account).
   - Clients can permanently delete their account and data, and admins can delete client accounts for erasure requests.
   - Read notifications are removed after 90 days and all notifications after a year.
-  - Trainers' and professionals' access to client data, and report exports, are recorded in the application log. Logs don't include email addresses for failed sign-ins.
+  - Trainers' access to client data, and report and progress exports, are recorded in the application log. Logs don't include email addresses for failed sign-ins.
 - **Secrets:** `appsettings.json` only has a placeholder connection string. Outside Development the app refuses to start until a real one is supplied.
 
 ## User management
@@ -289,10 +292,9 @@ Everyone can edit their own profile, set a profile picture and change their pass
 
 | Role | Pages | What they can do |
 |------|-------|------------------|
-| Admin | Dashboard, Users, Assignments, Reports | See user activity and system usage; create and manage accounts; assign each client to a trainer; run reports across all clients |
-| Trainer | Dashboard, Clients, Plans, Appointments, Reports | See assigned clients' measurements, logs and progress charts; give feedback; create, edit and delete workout and diet plans for them; approve, decline, reschedule, cancel and complete appointment requests; run reports on their clients |
-| Health professional | Dashboard, Appointments | Approve, decline, reschedule, cancel and complete consultation requests; view progress of, and give feedback to, clients who chose them or have an approved or completed appointment with them |
-| Client | Dashboard, Find experts, Plans, Appointments, Track | Browse trainers and health professionals, read their reviews and choose one of each; rate past appointments (completed, or approved and ended); view plans from their trainer; book consultations with a trainer or health professional and cancel them; log, edit and delete workouts, meals and measurements (weight, height, body fat, resting heart rate); see progress charts and feedback |
+| Admin | Dashboard, Users, Assignments, Reports | See user activity and system usage; create and manage accounts; assign each client to a trainer; run reports across all clients and export them as Excel or PDF |
+| Trainer | Dashboard, Clients, Plans, Appointments, Reports | See assigned clients' measurements, logs and progress charts; give feedback; create, edit and delete workout and diet plans for them; approve, decline, reschedule, cancel and complete appointment requests; run reports on their clients and export them as Excel or PDF |
+| Client | Dashboard, Find a trainer, Plans, Appointments, Track | Browse trainers, read their reviews and choose one; rate past appointments (completed, or approved and ended); view plans from their trainer; book consultations with a trainer and cancel them; log, edit and delete workouts, meals and measurements (weight, height, body fat, resting heart rate), or log planned workouts and meals in one click; see progress charts and feedback; export their progress report as Excel or PDF |
 
 ## Project Structure
 
@@ -324,9 +326,11 @@ HealthTrack/
 - [x] Workout & diet management
 - [x] Appointment system
 - [x] Progress tracking & analytics
-- [x] Health professional role, admin user management, editable log entries
+- [x] Admin user management, editable log entries
 - [x] My account page (profile and password)
 - [x] Emails (Mailpit) and notifications
-- [x] Profile pictures; clients choose their own trainer and health professional
+- [x] Profile pictures; clients choose their own trainer
 - [x] Security hardening & data protection
 - [x] Role-specific registration and profiles
+- [x] One-click logging of planned workouts and meals; upcoming workouts
+- [x] Health professional role removed (not in the brief's account types); Excel and PDF report exports for trainers, admins and clients
