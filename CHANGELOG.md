@@ -2,39 +2,12 @@
 
 A log of every task completed on HealthTrack, newest first.
 
-## 2026-10-26 — Coursework 2 report: cover sheet, font sizes and wording
-
-Commit: not committed yet
-
-### Changed
-- **Cover sheet** (`Report/HealthTrack_CW2_Report.docx` and `.pdf`) is now an exact copy of the AD CW2 brief's page 1:
-  - It sits in its own section with the brief's margins (left 1440, right 968 twips). The rest of the report keeps its own margins and footers.
-  - The brief's Normal, Heading 3, Body Text and List Paragraph styles are copied in as `CoverNormal`, `CoverHeading3`, `CoverBodyText` and `CoverListParagraph`. They are left aligned, with no ligatures or kerning and no outline level, so nothing reaches the contents.
-  - Before this, the cover used the report's justified Normal style and wider margins, so its text wrapped on different lines from the brief.
-- **Cover sheet details:**
-  - Module Leader is Chamila Karunathilake.
-  - The signature line underlines only the email, with no blank underlined tabs after it.
-  - The Date field is filled with the submission date, 26 October 2026, underlined the same way.
-- **Title page:** "Date of issue: 23 October 2026" is now "Date of submission: 26 October 2026". The test date in chapter 7 stays 23 October 2026, the day the tests were run.
-  - The cover's two university links are correct in Word's fallback text box as well.
-- **Third-level headings are numbered:** all 39 (3.1.1 Home page to 7.3.11 User interface), so every heading in the contents has a number.
-- **Contents:** the TOC 1 style is no longer italic. Word rebuilt the contents and refreshed the page numbers in the lists of figures and tables. All 281 entries fit on one line and match the page their heading is on.
-- **Font sizes:** all body text, table data and captions are Times New Roman 12. Only the headings and the contents lists differ.
-- **Contents:** the TC-38 and TC-42 titles are shortened so every contents entry fits on one line.
-- **No semicolons in the writing:** 133 passages were reworded. Semicolons remain only in the C# code excerpts and the connection string, where they are syntax. Two diagrams were re-exported for the same reason: `fig_seq_book` and `fig_act_register`.
-
-### Verified
-- Exported through Word: 143 pages. The cover renders line for line like the brief.
-- The PDF's 281 contents links were rebuilt again, and all 470 links have a target.
-- No AI or tool names appear in the document parts or metadata.
-
-## 2026-10-23 — Test data seeder, meal reminder fix and the Coursework 2 report
+## 2026-10-23 — Test data seeder and meal reminder fix
 
 Commit: not committed yet
 
 ### Added
 - **`Data/DemoDataSeeder.cs`** and a `--seed-demo` switch in `Program.cs` (Development only): drops and recreates the database, runs the normal `DbSeeder`, then adds 2 admins, 5 trainers (with qualifications) and 13 clients with Sinhala names, ~100 days of measurements, workouts and meals (Sri Lankan foods), current/past/future plans, 60 appointments in every status (including an approved past session for testing "complete"), reviews, feedback and notifications. One client is disabled and two have no trainer. Dates are relative to today; seeded password `HealthTrack@2026`.
-- **`Report/`**: `HealthTrack_CW2_Report.docx` and `.pdf` (130 pages, formatted like the ASE CW2 report: Times New Roman throughout, A4, same margins, Esoft heading styles, TOC, list of figures and tables). Citations are Word citation fields (Harvard - Anglia, 28 sources in the source manager) and each is an internal link to its bookmarked entry in the References list; figure and table mentions are `REF` cross-reference fields; mentions of sections, chapters, appendices, the coverage table's section numbers and test IDs (TC-xx) link to their headings or test-case tables. All 425 internal links resolve, in the .docx and the PDF. Word for Mac's PDF export left 52 contents links pointing at objects it never wrote and drew the rest of the contents links one line off (e.g. Acknowledgement opened List of figures), so the PDF's 281 contents links were rebuilt from the text positions: every entry, including both lines of wrapped entries, now opens its printed page at the heading. The first page is now the original Course Submission Cover Sheet from the AD CW2 brief (university logo, module details, signature line and the academic-integrity box with its two university links), filled in for E150756, with Deadline, Module Leader and Date left blank. Tables no longer have a white cell fill, which some PDF viewers drew over the borders and left white gaps at the joins; every cell has its own black borders. Screenshots appear only as test-case evidence. Author metadata is the student's only. `diagrams/` holds 19 draw.io sources and PNGs in Times New Roman (architecture, 4 ER, 3 use case, 4 class, 4 sequence, state machine, 2 activity) and `screenshots/` the 67 test-case screenshots.
 
 ### Changed
 - `appsettings.Development.json`: the seeded admin's name is Chaminda Abeysekara. README documents the test data.
