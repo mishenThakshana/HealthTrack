@@ -83,6 +83,13 @@ builder.Services.AddHostedService<ReminderService>();
 
 var app = builder.Build();
 
+// "dotnet run -- --seed-demo" (Development only) replaces all data with test data and exits.
+if (isDevelopment && args.Contains("--seed-demo"))
+{
+    await DemoDataSeeder.ResetAndSeedAsync(app.Services);
+    return;
+}
+
 await DbSeeder.SeedAsync(app.Services);
 
 if (!isDevelopment)

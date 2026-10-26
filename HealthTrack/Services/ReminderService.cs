@@ -100,9 +100,11 @@ public class ReminderService(IServiceScopeFactory scopes, IOptions<ReminderOptio
         }
     }
 
+    // The window can run past midnight (meals: 20:00 + 4 hours ends at 00:00).
     private static bool InWindow(DateTime now, TimeOnly start, int hours)
     {
         var time = TimeOnly.FromDateTime(now);
-        return time >= start && time < start.AddHours(hours) && start.AddHours(hours) > start;
+        var end = start.AddHours(hours);
+        return end > start ? time >= start && time < end : time >= start || time < end;
     }
 }

@@ -159,11 +159,15 @@ In Development, this account is created on startup if it doesn't already exist. 
 
 | Role | Email | Password | Name |
 |------|-------|----------|------|
-| Admin | `admin@healthtrack.local` | `Admin@12345` | System Administrator |
+| Admin | `admin@healthtrack.local` | `Admin@12345` | Chaminda Abeysekara |
 
 Clients and trainers sign up through the Register page. You can add more seed accounts to `SeedUsers`. Each entry takes `Email`, `Password`, `FullName` and `Role`, plus the optional details they'd enter at registration (for example `TrainerEmail`, `FitnessGoal`, `Specialization` and `Qualifications`).
 
 These are for local development only. Don't use them in production.
+
+### Test data
+
+`dotnet run --project HealthTrack -- --seed-demo` (Development only) **drops the database**, recreates it and fills it with test data, then exits. It adds a second admin, five trainers with qualifications and thirteen clients (Sinhala names), about 100 days of measurements, workouts and meals, workout and diet plans, appointments in every status, reviews, feedback and notifications. Dates are relative to the day it runs. Every seeded account's password is `HealthTrack@2026`; the main demo accounts are `kavindu.senanayake@healthtrack.local` (client) and `nuwan.jayasinghe@healthtrack.local` (trainer).
 
 ## Registration and role details
 
